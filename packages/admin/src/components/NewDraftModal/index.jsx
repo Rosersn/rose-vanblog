@@ -1,15 +1,33 @@
-import { createDraft, getAllCategories, getTags } from '@/services/van-blog/api';
+import { createCategory, createDraft, getAllCategories, getTags } from '@/services/van-blog/api';
 import {
-  ModalForm,
-  ProFormDateTimePicker,
-  ProFormSelect,
-  ProFormText,
+    ModalForm,
+    ProFormDateTimePicker,
+    ProFormItem,
+    ProFormSelect,
+    ProFormText,
 } from '@ant-design/pro-components';
-import { Button } from 'antd';
+import { AutoComplete, Button, message } from 'antd';
 import moment from 'moment';
+import { useEffect, useState } from 'react';
 import AuthorField from '../AuthorField';
+
 export default function (props) {
   const { onFinish } = props;
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    // 获取分类列表
+    const fetchCategories = async () => {
+      try {
+        const { data } = await getAllCategories();
+        setCategories(data || []);
+      } catch (error) {
+        console.warn('获取分类列表失败:', error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
   return (
     <ModalForm
       title="新建草稿"
@@ -25,6 +43,25 @@ export default function (props) {
         const washedValues = {};
         for (const [k, v] of Object.entries(values)) {
           washedValues[k.replace('C', '')] = v;
+        }
+
+        // 检查是否需要创建新分类
+        if (washedValues.category) {
+          try {
+            const { data: categories } = await getAllCategories();
+            if (!categories.includes(washedValues.category)) {
+              // 创建新分类
+              await createCategory({ name: washedValues.category });
+              message.success(`新分类 "${washedValues.category}" 创建成功！`);
+            }
+          } catch (error) {
+            if (error.response?.status === 406) {
+              message.error(error.response?.data?.message || '分类创建失败');
+              return false;
+            }
+            // 如果是其他错误，继续创建草稿
+            console.warn('检查分类时出错:', error);
+          }
         }
 
         const { data } = await createDraft(washedValues);
@@ -59,25 +96,24 @@ export default function (props) {
           return msg?.data?.map((item) => ({ label: item, value: item })) || [];
         }}
       />
-      <ProFormSelect
+      <ProFormItem
         width="md"
         required
-        id="categoryC"
-        name="categoryC"
         label="分类"
-        tooltip="首次使用请先在站点管理-数据管理-分类管理中添加分类"
-        placeholder="请选择分类"
+        name="categoryC"
+        tooltip="可以选择已有分类，也可以输入新分类名称"
         rules={[{ required: true, message: '这是必填项' }]}
-        request={async () => {
-          const { data: categories } = await getAllCategories();
-          return categories?.map((e) => {
-            return {
-              label: e,
-              value: e,
-            };
-          });
-        }}
-      />
+      >
+        <AutoComplete
+          placeholder="请选择分类或输入新分类名称"
+          allowClear
+          filterOption={(inputValue, option) =>
+            option?.value?.toLowerCase().indexOf(inputValue.toLowerCase()) >= 0
+          }
+          options={categories.map(item => ({ value: item, label: item }))}
+          style={{ width: '100%' }}
+        />
+      </ProFormItem>
       <ProFormDateTimePicker
         width="md"
         name="createdAtC"

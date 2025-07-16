@@ -1,9 +1,10 @@
-import { getAllCategories, getTags, updateArticle, updateDraft } from '@/services/van-blog/api';
-import { ModalForm, ProFormDateTimePicker, ProFormSelect, ProFormText } from '@ant-design/pro-form';
-import { Form, message, Modal } from 'antd';
-import moment from 'moment';
-import { useEffect } from 'react';
+import { createCategory, getAllCategories, getTags, updateArticle, updateDraft } from '@/services/van-blog/api';
+import { ModalForm, ProFormDateTimePicker, ProFormItem, ProFormSelect, ProFormText } from '@ant-design/pro-form';
+import { AutoComplete, Form, message, Modal } from 'antd';
+import * as moment from 'moment';
+import { useEffect, useState } from 'react';
 import AuthorField from '../AuthorField';
+
 export default function (props: {
   currObj: any;
   setLoading: any;
@@ -12,9 +13,25 @@ export default function (props: {
 }) {
   const { currObj, setLoading, type, onFinish } = props;
   const [form] = Form.useForm();
+  const [categories, setCategories] = useState([]);
+
   useEffect(() => {
     if (form && form.setFieldsValue) form.setFieldsValue(currObj);
   }, [currObj]);
+
+  useEffect(() => {
+    // 获取分类列表
+    const fetchCategories = async () => {
+      try {
+        const { data } = await getAllCategories();
+        setCategories(data || []);
+      } catch (error) {
+        console.warn('获取分类列表失败:', error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
   return (
     <ModalForm
       form={form}
@@ -40,6 +57,27 @@ export default function (props: {
           return false;
         }
         setLoading(true);
+        
+        // 检查是否需要创建新分类
+        if (values.category) {
+          try {
+            const { data: categories } = await getAllCategories();
+            if (!categories.includes(values.category)) {
+              // 创建新分类
+              await createCategory({ name: values.category });
+              message.success(`新分类 "${values.category}" 创建成功！`);
+            }
+          } catch (error) {
+            if (error.response?.status === 406) {
+              message.error(error.response?.data?.message || '分类创建失败');
+              setLoading(false);
+              return false;
+            }
+            // 如果是其他错误，继续更新
+            console.warn('检查分类时出错:', error);
+          }
+        }
+        
         if (type == 'article') {
           await updateArticle(currObj?.id, values);
           onFinish();
@@ -73,35 +111,36 @@ export default function (props: {
       <AuthorField />
       <ProFormSelect
         mode="tags"
-        tokenSeparators={[',']}
         width="md"
         name="tags"
         label="标签"
         placeholder="请选择或输入标签"
+        fieldProps={{
+          tokenSeparators: [','],
+        }}
         request={async () => {
           const msg = await getTags();
           return msg?.data?.map((item) => ({ label: item, value: item })) || [];
         }}
       />
-      <ProFormSelect
+      <ProFormItem
         width="md"
         required
-        id="category"
-        tooltip="首次使用请先在站点管理-数据管理-分类管理中添加分类"
-        name="category"
         label="分类"
-        placeholder="请选择分类"
+        name="category"
+        tooltip="可以选择已有分类，也可以输入新分类名称"
         rules={[{ required: true, message: '这是必填项' }]}
-        request={async () => {
-          const { data: categories } = await getAllCategories();
-          return categories?.map((e) => {
-            return {
-              label: e,
-              value: e,
-            };
-          });
-        }}
-      />
+      >
+        <AutoComplete
+          placeholder="请选择分类或输入新分类名称"
+          allowClear
+          filterOption={(inputValue, option) =>
+            option?.value?.toLowerCase().indexOf(inputValue.toLowerCase()) >= 0
+          }
+          options={categories.map(item => ({ value: item, label: item }))}
+          style={{ width: '100%' }}
+        />
+      </ProFormItem>
       <ProFormDateTimePicker
         width="md"
         name="createdAt"
@@ -153,11 +192,11 @@ export default function (props: {
               return [
                 {
                   label: '否',
-                  value: false,
+                  value: 'false',
                 },
                 {
                   label: '是',
-                  value: true,
+                  value: 'true',
                 },
               ];
             }}
@@ -180,11 +219,11 @@ export default function (props: {
               return [
                 {
                   label: '否',
-                  value: false,
+                  value: 'false',
                 },
                 {
                   label: '是',
-                  value: true,
+                  value: 'true',
                 },
               ];
             }}

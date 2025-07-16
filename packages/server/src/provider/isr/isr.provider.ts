@@ -36,12 +36,9 @@ export class ISRProvider {
     // ! 配置差的机器可能并发多了会卡，所以改成串行的。
 
     await this.activeUrls(this.urlList, false);
-    let postId: any = null;
-    const articleWithThisId = await this.articleProvider.getById(postId, 'list');
-    if (articleWithThisId) {
-      postId = articleWithThisId.pathname || articleWithThisId.id;
-    }
-    await this.activePath('post', postId || undefined);
+    
+    // 全量渲染时不需要指定特定的文章ID，让activePath处理所有文章
+    await this.activePath('post');
     await this.activePath('page');
     await this.activePath('category');
     await this.activePath('tag');
@@ -115,8 +112,12 @@ export class ISRProvider {
       case 'post':
         const articleUrls = await this.getArticleUrls();
         if (postId) {
-          const urlsWithoutThisId = articleUrls.filter((u) => u !== `/post/${postId}`);
-          await this.activeUrls([`/post/${postId}`, ...urlsWithoutThisId], false);
+          // 需要根据文章ID找到正确的路径（可能是自定义路径名）
+          const article = await this.articleProvider.getById(postId, 'list');
+          const targetPath = article ? `/post/${article.pathname || article.id}` : `/post/${postId}`;
+          
+          const urlsWithoutThisId = articleUrls.filter((u) => u !== targetPath);
+          await this.activeUrls([targetPath, ...urlsWithoutThisId], false);
         } else {
           await this.activeUrls(articleUrls, false);
         }
@@ -143,12 +144,26 @@ export class ISRProvider {
     }
     
     // 无论是什么事件都先触发文章本身、标签和分类。
-    this.activeUrl(`/post/${id}`, true);
+    // 使用自定义路径名或ID来构建URL
+    const currentPath = article.pathname ? `/post/${article.pathname}` : `/post/${id}`;
+    this.activeUrl(currentPath, true);
+    
+    // 如果是更新事件且路径发生了变化，也需要更新旧路径
+    if (event === 'update' && beforeObj) {
+      const beforePath = beforeObj.pathname ? `/post/${beforeObj.pathname}` : `/post/${id}`;
+      if (beforePath !== currentPath) {
+        this.activeUrl(beforePath, true);
+        this.logger.log(`文章路径变化：${beforePath} -> ${currentPath}`);
+      }
+    }
+    
     if (pre) {
-      this.activeUrl(`/post/${pre?.id}`, true);
+      const prePath = pre.pathname ? `/post/${pre.pathname}` : `/post/${pre.id}`;
+      this.activeUrl(prePath, true);
     }
     if (next) {
-      this.activeUrl(`/post/${next?.id}`, true);
+      const nextPath = next.pathname ? `/post/${next.pathname}` : `/post/${next.id}`;
+      this.activeUrl(nextPath, true);
     }
     const tags = article.tags;
     if (tags && tags.length > 0) {

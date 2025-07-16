@@ -1,31 +1,25 @@
-import React, { useState } from 'react';
-import { Modal, Form, Select, message } from 'antd';
-import { convertDocumentToDraft, getAllCategories } from '@/services/van-blog/api';
+import { convertDocumentToDraft, createCategory, getAllCategories } from '@/services/van-blog/api';
+import { AutoComplete, Form, message, Modal } from 'antd';
+import React, { useEffect, useState } from 'react';
 
 const ConvertToDraftModal = ({ visible, onCancel, onOk, document }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
 
-  // 获取分类列表
-  const fetchCategories = async () => {
-    try {
-      const { data } = await getAllCategories();
-      setCategories(data || []);
-    } catch (error) {
-      message.error('获取分类失败');
-    }
-  };
-
-  // 模态框显示时获取分类
-  const handleModalOpen = () => {
+  useEffect(() => {
+    // 获取分类列表
+    const fetchCategories = async () => {
+      try {
+        const { data } = await getAllCategories();
+        setCategories(data || []);
+      } catch (error) {
+        message.error('获取分类失败');
+      }
+    };
     if (visible) {
       fetchCategories();
     }
-  };
-
-  React.useEffect(() => {
-    handleModalOpen();
   }, [visible]);
 
   const handleSubmit = async () => {
@@ -33,7 +27,33 @@ const ConvertToDraftModal = ({ visible, onCancel, onOk, document }) => {
       const values = await form.validateFields();
       setLoading(true);
       
-      await convertDocumentToDraft(document.id, values.category);
+      // 处理分类值（可能是数组）
+      let categoryValue = values.category;
+      if (Array.isArray(categoryValue)) {
+        categoryValue = categoryValue[0];
+      }
+      
+      // 检查是否需要创建新分类
+      if (categoryValue) {
+        try {
+          const { data: categories } = await getAllCategories();
+          if (!categories.includes(categoryValue)) {
+            // 创建新分类
+            await createCategory({ name: categoryValue });
+            message.success(`新分类 "${categoryValue}" 创建成功！`);
+          }
+        } catch (error) {
+          if (error.response?.status === 406) {
+            message.error(error.response?.data?.message || '分类创建失败');
+            setLoading(false);
+            return;
+          }
+          // 如果是其他错误，继续转换
+          console.warn('检查分类时出错:', error);
+        }
+      }
+      
+      await convertDocumentToDraft(document.id, categoryValue);
       message.success('转换成功！');
       
       form.resetFields();
@@ -76,20 +96,15 @@ const ConvertToDraftModal = ({ visible, onCancel, onOk, document }) => {
           label="选择分类"
           rules={[{ required: true, message: '请选择分类' }]}
         >
-          <Select 
-            placeholder="请选择草稿分类"
-            showSearch
-            optionFilterProp="children"
-            filterOption={(input, option) =>
-              option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+          <AutoComplete
+            placeholder="请选择分类或输入新分类名称"
+            allowClear
+            filterOption={(inputValue, option) =>
+              option?.value?.toLowerCase().indexOf(inputValue.toLowerCase()) >= 0
             }
-          >
-            {categories.map(category => (
-              <Select.Option key={category} value={category}>
-                {category}
-              </Select.Option>
-            ))}
-          </Select>
+            options={categories.map(item => ({ value: item, label: item }))}
+            style={{ width: '100%' }}
+          />
         </Form.Item>
       </Form>
     </Modal>

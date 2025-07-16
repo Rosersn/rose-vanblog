@@ -1,25 +1,61 @@
-import { createArticle, getAllCategories, getTags } from '@/services/van-blog/api';
+import { createArticle, createCategory, getAllCategories, getTags } from '@/services/van-blog/api';
 import { parseMarkdownFile } from '@/services/van-blog/parseMarkdownFile';
 import {
-  ModalForm,
-  ProFormDateTimePicker,
-  ProFormSelect,
-  ProFormText,
-  ProFormTextArea,
+    ModalForm,
+    ProFormDateTimePicker,
+    ProFormItem,
+    ProFormSelect,
+    ProFormText,
+    ProFormTextArea,
 } from '@ant-design/pro-components';
-import { Button, Form, Upload } from 'antd';
+import { AutoComplete, Button, Form, Upload, message } from 'antd';
 import moment from 'moment';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
 export default function (props) {
   const { onFinish } = props;
   const [visible, setVisible] = useState(false);
   const [form] = Form.useForm();
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    // 获取分类列表
+    const fetchCategories = async () => {
+      try {
+        const { data } = await getAllCategories();
+        setCategories(data || []);
+      } catch (error) {
+        console.warn('获取分类列表失败:', error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
   const handleUpload = async (file) => {
     const vals = await parseMarkdownFile(file);
     if (vals) {
+      // 检查是否需要创建新分类
+      if (vals.category) {
+        try {
+          const { data: categories } = await getAllCategories();
+          if (!categories.includes(vals.category)) {
+            // 创建新分类
+            await createCategory({ name: vals.category });
+            message.success(`新分类 "${vals.category}" 创建成功！`);
+          }
+        } catch (error) {
+          if (error.response?.status === 406) {
+            message.error(error.response?.data?.message || '分类创建失败');
+            return;
+          }
+          // 如果是其他错误，继续创建文章
+          console.warn('检查分类时出错:', error);
+        }
+      }
       await createArticle(vals);
     }
   };
+
   const beforeUpload = async (file, files) => {
     if (files.length > 1) {
       await handleUpload(file);
@@ -34,6 +70,7 @@ export default function (props) {
       setVisible(true);
     }
   };
+
   return (
     <>
       <Upload showUploadList={false} multiple={true} accept={'.md'} beforeUpload={beforeUpload}>
@@ -55,6 +92,25 @@ export default function (props) {
           const washedValues = {};
           for (const [k, v] of Object.entries(values)) {
             washedValues[k.replace('C', '')] = v;
+          }
+
+          // 检查是否需要创建新分类
+          if (washedValues.category) {
+            try {
+              const { data: categories } = await getAllCategories();
+              if (!categories.includes(washedValues.category)) {
+                // 创建新分类
+                await createCategory({ name: washedValues.category });
+                message.success(`新分类 "${washedValues.category}" 创建成功！`);
+              }
+            } catch (error) {
+              if (error.response?.status === 406) {
+                message.error(error.response?.data?.message || '分类创建失败');
+                return false;
+              }
+              // 如果是其他错误，继续创建文章
+              console.warn('检查分类时出错:', error);
+            }
           }
 
           await createArticle(washedValues);
@@ -96,25 +152,24 @@ export default function (props) {
             return msg?.data?.map((item) => ({ label: item, value: item })) || [];
           }}
         />
-        <ProFormSelect
+        <ProFormItem
           width="md"
           required
-          id="category"
-          name="category"
           label="分类"
-          placeholder="请选择分类"
-          tooltip="首次使用请先在站点管理-数据管理-分类管理中添加分类"
+          name="category"
+          tooltip="可以选择已有分类，也可以输入新分类名称"
           rules={[{ required: true, message: '这是必填项' }]}
-          request={async () => {
-            const { data: categories } = await getAllCategories();
-            return categories?.map((e) => {
-              return {
-                label: e,
-                value: e,
-              };
-            });
-          }}
-        />
+        >
+          <AutoComplete
+            placeholder="请选择分类或输入新分类名称"
+            allowClear
+            filterOption={(inputValue, option) =>
+              option?.value?.toLowerCase().indexOf(inputValue.toLowerCase()) >= 0
+            }
+            options={categories.map(item => ({ value: item, label: item }))}
+            style={{ width: '100%' }}
+          />
+        </ProFormItem>
         <ProFormDateTimePicker
           showTime={{
             defaultValue: moment('00:00:00', 'HH:mm:ss'),
