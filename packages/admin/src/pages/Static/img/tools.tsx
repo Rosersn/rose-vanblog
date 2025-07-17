@@ -17,6 +17,7 @@ export const getImgLink = (realPath, autoCompleteHost = true) => {
   }
   url = url.replace(/\)/g, '%29');
   url = url.replace(/\(/g, '%28');
+  url = url.replace(/\s/g, '%20');
   return url;
 };
 export const copyImgLink = (
