@@ -24,21 +24,28 @@ const Home = (props: IndexPageProps) => {
   const [articlesLoaded, setArticlesLoaded] = useState(false);
   const [authorCardLoaded, setAuthorCardLoaded] = useState(false);
 
-  // 模拟数据加载完成
+  // 优化数据加载检测
   useEffect(() => {
     // 检查文章数据是否有效
-    if (props.articles && props.articles.length >= 0) {
-      // 延迟一帧确保DOM渲染完成，避免闪烁
-      requestAnimationFrame(() => {
+    if (props.articles && Array.isArray(props.articles)) {
+      // 如果是SSG渲染且有数据，立即显示内容
+      if (props.articles.length > 0) {
         setArticlesLoaded(true);
-      });
+      } else {
+        // 如果没有文章，也立即显示（避免无限骨架屏）
+        setTimeout(() => setArticlesLoaded(true), 100);
+      }
+    } else {
+      // 数据无效时，短暂延迟后显示
+      setTimeout(() => setArticlesLoaded(true), 200);
     }
     
     // 检查作者卡片数据是否有效
-    if (props.authorCardProps) {
-      requestAnimationFrame(() => {
-        setAuthorCardLoaded(true);
-      });
+    if (props.authorCardProps && props.authorCardProps.author) {
+      setAuthorCardLoaded(true);
+    } else {
+      // 短暂延迟后显示骨架屏的替代内容
+      setTimeout(() => setAuthorCardLoaded(true), 150);
     }
   }, [props.articles, props.authorCardProps]);
 
@@ -57,14 +64,14 @@ const Home = (props: IndexPageProps) => {
       <Head>
         <meta
           name="keywords"
-          content={getArticlesKeyWord(props.articles).join(",")}
+          content={getArticlesKeyWord(props.articles || []).join(",")}
         ></meta>
       </Head>
       
       {articlesLoaded ? (
         <div className="content-container fade-in">
           <div className="space-y-2 md:space-y-4">
-            {props.articles.map((article) => (
+            {(props.articles || []).map((article) => (
               <PostCard
                 showEditButton={props.layoutProps.showEditButton === "true"}
                 setContent={() => {}}
@@ -91,7 +98,7 @@ const Home = (props: IndexPageProps) => {
             ))}
           </div>
           <PageNav
-            total={props.authorCardProps.postNum}
+            total={props.authorCardProps?.postNum || 0}
             current={props.currPage}
             base={"/"}
             more={"/page"}

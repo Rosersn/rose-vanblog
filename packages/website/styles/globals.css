@@ -263,25 +263,25 @@ body .ua-link::before {
 /* 骨架屏动画效果 */
 @keyframes skeleton-pulse {
   0% {
-    background-color: rgb(229, 231, 235); /* gray-200 */
+    background-color: rgb(243, 244, 246); /* gray-100 */
   }
   50% {
-    background-color: rgb(209, 213, 219); /* gray-300 */
+    background-color: rgb(229, 231, 235); /* gray-200 */
   }
   100% {
-    background-color: rgb(229, 231, 235); /* gray-200 */
+    background-color: rgb(243, 244, 246); /* gray-100 */
   }
 }
 
 @keyframes skeleton-pulse-dark {
   0% {
-    background-color: rgb(55, 65, 81); /* gray-700 */
+    background-color: rgb(31, 41, 55); /* gray-800 */
   }
   50% {
-    background-color: rgb(75, 85, 99); /* gray-600 */
+    background-color: rgb(55, 65, 81); /* gray-700 */
   }
   100% {
-    background-color: rgb(55, 65, 81); /* gray-700 */
+    background-color: rgb(31, 41, 55); /* gray-800 */
   }
 }
 
@@ -297,7 +297,7 @@ body .ua-link::before {
 @keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -306,18 +306,34 @@ body .ua-link::before {
 }
 
 .fade-in {
-  animation: fade-in 0.3s ease-out;
+  animation: fade-in 0.4s ease-out;
+}
+
+/* 骨架屏淡出动画 */
+@keyframes fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.fade-out {
+  animation: fade-out 0.2s ease-in forwards;
 }
 
 /* 平滑的布局转换 */
 .layout-transition {
-  transition: all 0.2s ease-in-out;
+  transition: all 0.3s ease-in-out;
 }
 
 /* 防止闪烁的容器 */
 .anti-flicker {
   min-height: 200px;
-  transition: min-height 0.2s ease-in-out;
+  transition: min-height 0.3s ease-in-out;
 }
 
 /* 骨架屏容器样式 */
@@ -327,5 +343,14 @@ body .ua-link::before {
 
 /* 内容容器样式 */
 .content-container {
-  animation: fade-in 0.3s ease-out;
+  animation: fade-in 0.4s ease-out;
+}
+
+/* 优化骨架屏和实际内容的背景过渡 */
+.post-card-wrapper {
+  position: relative;
+}
+
+.post-card {
+  transition: background-color 0.2s ease-in-out;
 }

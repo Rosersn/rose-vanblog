@@ -9,7 +9,7 @@ export function Skeleton({
 }) {
   return (
     <div 
-      className={`bg-gray-200 dark:bg-gray-700 animate-pulse ${height} ${width} ${rounded} ${className}`}
+      className={`bg-gray-100 dark:bg-gray-800 animate-pulse ${height} ${width} ${rounded} ${className}`}
     />
   );
 }
@@ -19,7 +19,7 @@ export function PostCardSkeleton({ count = 1 }) {
   return (
     <div className="space-y-2 md:space-y-4 skeleton-container">
       {Array.from({ length: count }, (_, i) => (
-        <div key={i} className="bg-white dark:bg-dark card-shadow py-4 px-1 sm:px-3 md:py-6 md:px-5 rounded-lg layout-transition">
+        <div key={i} className="bg-white dark:bg-dark card-shadow dark:card-shadow-dark py-4 px-1 sm:px-3 md:py-6 md:px-5 rounded-lg layout-transition">
           {/* 标题骨架屏 */}
           <div className="mb-3">
             <Skeleton height="h-6" width="w-3/4" className="mb-2" />
@@ -48,7 +48,7 @@ export function PostCardSkeleton({ count = 1 }) {
 // 侧边栏作者卡片骨架屏
 export function AuthorCardSkeleton() {
   return (
-    <div className="w-52 flex flex-col justify-center items-center bg-white pt-6 pb-4 card-shadow ml-2 dark:bg-dark dark:card-shadow-dark rounded-lg skeleton-container layout-transition">
+    <div className="w-52 flex flex-col justify-center items-center bg-white dark:bg-dark pt-6 pb-4 card-shadow dark:card-shadow-dark ml-2 rounded-lg skeleton-container layout-transition">
       <Skeleton height="h-16" width="w-16" rounded="rounded-full" className="mb-3" />
       <Skeleton height="h-5" width="w-20" className="mb-2" />
       <Skeleton height="h-4" width="w-32" className="mb-4" />
@@ -85,7 +85,7 @@ export function TagListSkeleton() {
 // 目录骨架屏
 export function TocSkeleton() {
   return (
-    <div className="bg-white w-60 card-shadow dark:card-shadow-dark ml-2 dark:bg-dark overflow-y-auto pb-2 rounded-lg p-4 skeleton-container layout-transition">
+    <div className="bg-white dark:bg-dark w-60 card-shadow dark:card-shadow-dark ml-2 overflow-y-auto pb-2 rounded-lg p-4 skeleton-container layout-transition">
       <Skeleton height="h-5" width="w-16" className="mb-4" />
       <div className="space-y-2">
         {Array.from({ length: 8 }, (_, i) => (
