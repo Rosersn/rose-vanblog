@@ -13,7 +13,10 @@ export const washArticlesByKey = (
     )
   );
 
-  for (const date of dates) {
+  // 使用与客户端完全相同的排序逻辑，避免视觉闪烁
+  const sortedDates = dates.sort((a, b) => parseInt(b) - parseInt(a));
+
+  for (const date of sortedDates) {
     const curArticles = rawArticles
       .filter((each) =>
         isKeyArray ? getValueFn(each).includes(date) : getValueFn(each) == date
