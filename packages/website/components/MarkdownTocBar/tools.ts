@@ -125,15 +125,7 @@ export const parseNavStructureFromHTML = (): NavItem[] => {
 
 // Main parsing function with improved fallback
 export const parseNavStructure = (source: string): NavItem[] => {
-  // First try DOM-based approach if available
-  if (typeof document !== 'undefined') {
-    const domResult = parseNavStructureFromHTML();
-    if (domResult.length > 0) {
-      return domResult;
-    }
-  }
-
-  // Enhanced regex-based approach
+  // 优先使用基于 markdown 源码的解析方式，确保在页面切换时能立即获得正确结果
   const contentWithoutCode = washMarkdownContent(source);
   const lines = contentWithoutCode.split('\n');
   const matchResult = [];
@@ -162,22 +154,31 @@ export const parseNavStructure = (source: string): NavItem[] => {
     }
   }
 
-  if (!matchResult.length) {
-    return [];
+  // 如果基于 markdown 源码的解析有结果，直接返回
+  if (matchResult.length > 0) {
+    const navData = matchResult.map((match, i) => {
+      let titleText = cleanTitleText(match.title);
+      
+      return {
+        index: i,
+        level: match.hashes.length,
+        text: titleText,
+        listNo: '',
+      };
+    });
+
+    return generateListNumbers(navData);
   }
 
-  const navData = matchResult.map((match, i) => {
-    let titleText = cleanTitleText(match.title);
-    
-    return {
-      index: i,
-      level: match.hashes.length,
-      text: titleText,
-      listNo: '',
-    };
-  });
+  // 如果基于 markdown 源码的解析没有结果，再尝试 DOM 解析作为后备
+  if (typeof document !== 'undefined') {
+    const domResult = parseNavStructureFromHTML();
+    if (domResult.length > 0) {
+      return domResult;
+    }
+  }
 
-  return generateListNumbers(navData);
+  return [];
 };
 
 // Helper function to clean title text
@@ -265,13 +266,38 @@ const trimArrZero = (arr: any) => {
 export const getEl = (item: NavItem, all: NavItem[]) => {
   const tagName = `h${item.level}`;
   
-  let els = document.querySelectorAll(`${tagName}[data-id="${item.text}"]`);
+  // 转义CSS选择器中的特殊字符
+  const escapeCSSSelector = (str: string) => {
+    // 转义CSS选择器中的特殊字符
+    return str.replace(/[!"#$%&'()*+,./:;<=>?@[\\\]^`{|}~]/g, '\\$&');
+  };
   
-  if (els.length === 0) {
-    els = document.querySelectorAll(`${tagName}[id="${item.text}"]`);
+  let els: NodeListOf<Element> | null = null;
+  
+  // 尝试使用data-id属性查找
+  try {
+    const escapedText = escapeCSSSelector(item.text);
+    els = document.querySelectorAll(`${tagName}[data-id="${escapedText}"]`);
+  } catch (e) {
+    // 如果转义后仍然无效，忽略此方式
+    console.warn('Invalid CSS selector for data-id:', item.text);
+    els = null;
   }
   
-  if (els.length === 0) {
+  // 如果没有找到，尝试使用id属性查找
+  if (!els || els.length === 0) {
+    try {
+      const escapedText = escapeCSSSelector(item.text);
+      els = document.querySelectorAll(`${tagName}[id="${escapedText}"]`);
+    } catch (e) {
+      // 如果转义后仍然无效，忽略此方式
+      console.warn('Invalid CSS selector for id:', item.text);
+      els = null;
+    }
+  }
+  
+  // 如果仍然没有找到，使用文本内容匹配（最可靠的方式）
+  if (!els || els.length === 0) {
     const allHeadings = document.querySelectorAll(tagName);
     for (let i = 0; i < allHeadings.length; i++) {
       const heading = allHeadings[i];
