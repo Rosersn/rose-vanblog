@@ -1,16 +1,16 @@
-import Link from "next/link";
 import Headroom from "headroom.js";
+import Link from "next/link";
+import { useRouter } from "next/router";
 import { useContext, useEffect, useMemo, useState } from "react";
+import { MenuItem } from "../../api/getAllData";
+import { encodeQuerystring } from "../../utils/encode";
+import { ThemeContext } from "../../utils/themeContext";
+import AdminButton from "../AdminButton";
+import KeyCard from "../KeyCard";
+import RssButton from "../RssButton";
 import SearchCard from "../SearchCard";
 import ThemeButton from "../ThemeButton";
-import KeyCard from "../KeyCard";
-import { MenuItem } from "../../api/getAllData";
-import AdminButton from "../AdminButton";
-import { ThemeContext } from "../../utils/themeContext";
-import RssButton from "../RssButton";
 import Item from "./item";
-import { encodeQuerystring } from "../../utils/encode";
-import { useRouter } from "next/router";
 
 export default function (props: {
   logo: string;
@@ -220,10 +220,14 @@ export default function (props: {
             ></div>
             <ul className="flex flex-wrap items-center text-sm text-gray-600 dark:text-dark">
               {props.categories.map((catelog) => {
+                const isActive = router.pathname === '/category/[category]' && 
+                                router.query.category === catelog;
                 return (
                   <li
                     key={catelog}
-                    className="flex items-center md:px-2 hover:text-gray-900 dark:hover:text-dark-hover transform hover:scale-110 cursor-pointer transition-all py-1"
+                    className={`flex items-center md:px-2 hover:text-gray-900 dark:hover:text-dark-hover transform hover:scale-110 cursor-pointer transition-all py-1 ${
+                      isActive ? 'text-blue-600 dark:text-blue-400 font-semibold' : ''
+                    }`}
                   >
                     <Link href={`/category/${encodeQuerystring(catelog)}`}>
                       <div>{catelog}</div>

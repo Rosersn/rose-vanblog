@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { MouseEventHandler, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/router";
+import { MouseEventHandler, useMemo, useState } from "react";
 import { MenuItem } from "../../api/getAllData";
 
 function LinkItemAtom(props: {
@@ -11,8 +12,29 @@ function LinkItemAtom(props: {
   cls?: string;
 }) {
   const { item } = props;
-  const cls = `nav-item transform hover:scale-110 dark:border-nav-dark  dark:transition-all ua`;
-  const clsA = `h-full flex items-center px-2 md:px-4 `;
+  const router = useRouter();
+  
+  // 检查当前路由是否匹配导航项
+  const isActive = useMemo(() => {
+    const currentPath = router.pathname;
+    const itemPath = item.value;
+    
+    // 首页特殊处理
+    if (itemPath === '/' && currentPath === '/') {
+      return true;
+    }
+    
+    // 其他页面：如果当前路径以导航项路径开头，则为激活状态
+    if (itemPath !== '/' && currentPath.startsWith(itemPath)) {
+      return true;
+    }
+    
+    return false;
+  }, [router.pathname, item.value]);
+  
+  const cls = `nav-item transform hover:scale-110 dark:border-nav-dark dark:transition-all ua ${isActive ? 'text-blue-600 dark:text-blue-400 font-semibold' : ''}`;
+  const clsA = `h-full flex items-center px-2 md:px-4 ${isActive ? 'text-blue-600 dark:text-blue-400' : ''}`;
+  
   if (item.value.includes("http")) {
     return (
       <li
@@ -51,6 +73,32 @@ function LinkItemWithChildren(props: { item: MenuItem }) {
   const { item } = props;
   const [hover, setHover] = useState(false);
   const [hoverSub, setHoverSub] = useState(false);
+  const router = useRouter();
+  
+  // 检查当前路由是否匹配任何子菜单项
+  const isParentActive = useMemo(() => {
+    const currentPath = router.pathname;
+    
+    // 检查父菜单项本身是否激活
+    if (item.value === '/' && currentPath === '/') {
+      return true;
+    }
+    if (item.value !== '/' && currentPath.startsWith(item.value)) {
+      return true;
+    }
+    
+    // 检查子菜单项是否有激活的
+    return item.children?.some(child => {
+      if (child.value === '/' && currentPath === '/') {
+        return true;
+      }
+      if (child.value !== '/' && currentPath.startsWith(child.value)) {
+        return true;
+      }
+      return false;
+    }) || false;
+  }, [router.pathname, item.value, item.children]);
+  
   const show = useMemo(() => {
     return hover || hoverSub;
   }, [hover, hoverSub]);
@@ -66,6 +114,8 @@ function LinkItemWithChildren(props: { item: MenuItem }) {
           onMouseLeave={() => {
             setHover(false);
           }}
+          cls={`nav-item transform hover:scale-110 dark:border-nav-dark dark:transition-all ua ${isParentActive ? 'text-blue-600 dark:text-blue-400 font-semibold' : ''}`}
+          clsA={`h-full flex items-center px-2 md:px-4 ${isParentActive ? 'text-blue-600 dark:text-blue-400' : ''}`}
         />
 
         <div
