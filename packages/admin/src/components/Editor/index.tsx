@@ -3,29 +3,29 @@ import gfm from '@bytemd/plugin-gfm';
 import highlight from '@bytemd/plugin-highlight-ssr';
 import math from '@bytemd/plugin-math-ssr';
 // import mermaid from '@bytemd/plugin-mermaid';
-import { customMermaidPlugin } from './mermaidTheme';
 import { Editor } from '@bytemd/react';
 import { Spin } from 'antd';
 import 'bytemd/dist/index.css';
 import 'katex/dist/katex.css';
 import { useMemo } from 'react';
-import '../../style/github-markdown.css';
-import '../../style/code-light.css';
+import { useModel } from 'umi';
 import '../../style/code-dark.css';
+import '../../style/code-light.css';
 import '../../style/custom-container.css';
+import '../../style/github-markdown.css';
 import { emoji } from './emoji';
+import { historyIcon } from './history';
 import { imgUploadPlugin, uploadImg } from './imgUpload';
 import './index.less';
 import { insertMore } from './insertMore';
 import { cn } from './locales';
-import { useModel } from 'umi';
-import { customContainer } from './plugins/customContainer';
-import { historyIcon } from './history';
-import rawHTML from './rawHTML';
-import { Heading } from './plugins/heading';
+import { customMermaidPlugin } from './mermaidTheme';
 import { customCodeBlock } from './plugins/codeBlock';
+import { customContainer } from './plugins/customContainer';
+import { Heading } from './plugins/heading';
 import { LinkTarget } from './plugins/linkTarget';
 import { smartCodeBlock } from './plugins/smartCodeBlock';
+import rawHTML from './rawHTML';
 
 const sanitize = (schema) => {
   schema.protocols.src.push('data');
@@ -92,7 +92,7 @@ export default function EditorComponent(props: {
               setLoading(true);
               const url = await uploadImg(files[0]);
               setLoading(false);
-              return url ? [{ url: encodeURI(url) }] : [];
+              return url ? [{ url: url }] : [];
             }
             
             setLoading(true);
@@ -101,7 +101,7 @@ export default function EditorComponent(props: {
             try {
               const uploadPromises = files.map(async (file) => {
                 const url = await uploadImg(file);
-                return url ? { url: encodeURI(url) } : null;
+                return url ? { url: url } : null;
               });
               
               const results = await Promise.all(uploadPromises);

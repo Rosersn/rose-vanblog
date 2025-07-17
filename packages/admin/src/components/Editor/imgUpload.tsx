@@ -1,4 +1,4 @@
-import { copyImgLink, getImgLink } from '@/pages/Static/img/tools';
+import { getImgLink } from '@/pages/Static/img/tools';
 import { getClipboardContents } from '@/services/van-blog/clipboard';
 import { message } from 'antd';
 import { BytemdPlugin } from 'bytemd';
@@ -17,7 +17,7 @@ export const uploadImg = async (file: File) => {
     });
     const data = await res.json();
     if (data && data.statusCode == 200) {
-      const url = getImgLink(data.data.src, false);
+      const url = getImgLink(data.data.src, true);
       return url;
     } else {
       message.error('上传失败！');
