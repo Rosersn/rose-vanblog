@@ -36,9 +36,23 @@ export const updatePageview = async (
   }
 
   try {
+    // 获取管理员 token（如果已登录）
+    const token = window.localStorage.getItem("token") || window.sessionStorage.getItem("token");
+    
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+    };
+    
+    if (token) {
+      headers["token"] = token;
+    }
+
     const { statusCode, data } = await fetch(
       `/api/public/viewer?isNew=${!hasVisited}&isNewByPath=${!hasVisitedCurrentPath}`,
-      { method: "POST" }
+      { 
+        method: "POST",
+        headers: headers
+      }
     ).then((res) => res.json());
 
     return statusCode === 233 ? DEFAULT_PAGEVIEW_RESPONSE : data;

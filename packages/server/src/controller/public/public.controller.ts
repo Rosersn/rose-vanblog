@@ -1,19 +1,19 @@
 import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
-import { SortOrder } from 'src/types/sort';
+import { encode } from 'js-base64';
 import { ArticleProvider } from 'src/provider/article/article.provider';
 import { CategoryProvider } from 'src/provider/category/category.provider';
+import { CustomPageProvider } from 'src/provider/customPage/customPage.provider';
+import { IconProvider } from 'src/provider/icon/icon.provider';
 import { MetaProvider } from 'src/provider/meta/meta.provider';
 import { SettingProvider } from 'src/provider/setting/setting.provider';
-import { TagProvider } from 'src/provider/tag/tag.provider';
-import { VisitProvider } from 'src/provider/visit/visit.provider';
-import { version } from 'src/utils/loadConfig';
-import { CustomPageProvider } from 'src/provider/customPage/customPage.provider';
-import { encode } from 'js-base64';
-import { TokenProvider } from 'src/provider/token/token.provider';
-import { IconProvider } from 'src/provider/icon/icon.provider';
 import { StaticProvider } from 'src/provider/static/static.provider';
+import { TagProvider } from 'src/provider/tag/tag.provider';
+import { TokenProvider } from 'src/provider/token/token.provider';
+import { VisitProvider } from 'src/provider/visit/visit.provider';
+import { SortOrder } from 'src/types/sort';
+import { version } from 'src/utils/loadConfig';
 
 @ApiTags('public')
 @Controller('/api/public/')
@@ -135,6 +135,21 @@ export class PublicController {
     if (!url.pathname || url.pathname == '') {
       console.log('没找到 refer:', req.headers);
     }
+    
+    // 检查是否为管理员访问
+    const token = req.headers['token'];
+    if (token && typeof token === 'string') {
+      const isAdmin = await this.tokenProvider.checkToken(token);
+      if (isAdmin) {
+        // 管理员访问不计数，直接返回当前访问量
+        const data = await this.metaProvider.getViewer();
+        return {
+          statusCode: 200,
+          data: data,
+        };
+      }
+    }
+    
     const data = await this.metaProvider.addViewer(
       isNew,
       decodeURIComponent(url.pathname),
