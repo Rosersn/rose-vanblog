@@ -1,10 +1,10 @@
+import Headroom from "headroom.js";
 import Link from "next/link";
 import { useContext, useEffect, useMemo } from "react";
-import Headroom from "headroom.js";
 import { SocialItem } from "../../api/getAllData";
-import SocialCard from "../SocialCard";
 import { ThemeContext } from "../../utils/themeContext";
 import ImageBox from "../ImageBox";
+import SocialCard from "../SocialCard";
 export interface AuthorCardProps {
   author: string;
   desc: string;
@@ -50,7 +50,7 @@ export default function (props: { option: AuthorCardProps }) {
   });
   return (
     <div id="author-card" className="sticky ">
-      <div className="w-52 flex flex-col justify-center items-center bg-white pt-6  pb-4 card-shadow ml-2 dark:bg-dark dark:card-shadow-dark">
+      <div className="w-52 flex flex-col justify-center items-center bg-white pt-6 pb-4 card-shadow ml-2 dark:bg-dark dark:card-shadow-dark rounded-lg">
         <div className="px-10 flex flex-col justify-center items-center">
           <ImageBox
             alt="author logo"

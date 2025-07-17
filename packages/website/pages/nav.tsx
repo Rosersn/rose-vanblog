@@ -1,12 +1,11 @@
-import React from 'react';
 import { GetStaticProps } from 'next';
-import { useEffect, useState, useMemo, useCallback } from 'react';
-import Layout from '../components/Layout';
-import { getPublicMeta } from '../api/getAllData';
-import { getLayoutProps, getAuthorCardProps, LayoutProps } from '../utils/getLayoutProps';
-import AuthorCard, { AuthorCardProps } from '../components/AuthorCard';
 import Head from 'next/head';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { getPublicMeta } from '../api/getAllData';
+import AuthorCard, { AuthorCardProps } from '../components/AuthorCard';
+import Layout from '../components/Layout';
 import styles from '../styles/nav.module.css';
+import { getAuthorCardProps, getLayoutProps, LayoutProps } from '../utils/getLayoutProps';
 
 interface NavTool {
   _id: string;
@@ -153,14 +152,16 @@ export default function NavPage({
     }
   }, []);
 
-  // 客户端数据更新（仅在初始数据为空时请求）
+  // 客户端数据更新（仅在初始数据为空或过时时请求）
   useEffect(() => {
-    // 如果已有初始数据且数据非空，则不需要重新获取
+    // 如果已有初始数据且数据非空，则优先使用，不立即重新获取
     if (initialNavData.tools && initialNavData.tools.length > 0) {
-      console.log('Using cached nav data, skipping client fetch');
+      console.log('Using SSG nav data, skipping immediate client fetch');
+      setClientNavData(initialNavData);
       return;
     }
 
+    // 只有当初始数据为空时才立即获取
     const fetchNavData = async () => {
       try {
         setLoading(true);
@@ -239,7 +240,7 @@ export default function NavPage({
         title={`导航 - ${siteName}`}
         sideBar={<AuthorCard option={authorCardProps} />}
       >
-        <div className="bg-white dark:text-dark card-shadow dark:bg-dark dark:card-shadow-dark py-4 px-8 md:py-6 md:px-8 max-w-4xl mx-auto">
+        <div className="bg-white dark:text-dark card-shadow dark:bg-dark dark:card-shadow-dark py-4 px-8 md:py-6 md:px-8 max-w-4xl mx-auto rounded-lg">
           <div className={styles.navSearchSection}>
             <input
               id="nav-search-bar"

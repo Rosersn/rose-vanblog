@@ -1,11 +1,11 @@
 import dayjs from "dayjs";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useMemo } from "react";
-import { encodeQuerystring } from "../../utils/encode";
-import PostViewer from "../PostViewer";
-import PostViewerStats from "../PostViewerStats";
-import { getTarget } from "../Link/tools";
 import { checkLogin } from "../../utils/auth";
+import { encodeQuerystring } from "../../utils/encode";
+import { getTarget } from "../Link/tools";
+import PostViewerStats from "../PostViewerStats";
 
 export function Title(props: {
   type: "article" | "about" | "overview";
@@ -14,6 +14,7 @@ export function Title(props: {
   openArticleLinksInNewWindow: boolean;
   showEditButton: boolean;
 }) {
+  const router = useRouter();
   const showEditButton = props.showEditButton && checkLogin();
   const newTab = useMemo(() => {
     if (props.type == "overview" && props.openArticleLinksInNewWindow) {
@@ -38,6 +39,11 @@ export function Title(props: {
     }
   };
 
+  // 处理返回按钮点击
+  const handleBackClick = () => {
+    router.back();
+  };
+
   return (
     <div className="flex justify-center post-card-title ">
       {props.type === "about" ? (
@@ -49,12 +55,32 @@ export function Title(props: {
           {props.title}
         </div>
       ) : props.type === "article" ? (
-        // 文章详情页：标题不应该是链接，直接显示为可选择文本
-        <div style={{width:"90%"}} className="flex justify-center">
+        // 文章详情页：添加返回按钮和标题
+        <div style={{width:"90%"}} className="flex items-center justify-center relative">
+          {/* 返回按钮 */}
+          <button
+            onClick={handleBackClick}
+            className="absolute left-0 flex items-center justify-center w-8 h-8 rounded-full 
+                     bg-gray-100 hover:bg-gray-200 dark:bg-dark-2 dark:hover:bg-dark-3 
+                     text-gray-600 hover:text-gray-800 dark:text-dark dark:hover:text-dark-hover
+                     transition-all duration-200 group"
+            title="返回"
+          >
+            <svg 
+              className="w-4 h-4 transform group-hover:scale-110 transition-transform" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          {/* 标题 */}
           <div
             className={`text-lg block font-medium whitespace-normal break-words select-text cursor-text px-5 text-center mb-2 mt-2 dark:text-dark text-gray-700 ${
-              showEditButton ? "ml-8" : ""
-            } md:text-2xl`}
+              showEditButton ? "mr-8" : ""
+            } md:text-2xl flex-1`}
           >
             {props.title}
           </div>
@@ -65,11 +91,11 @@ export function Title(props: {
           <div
             className={`text-lg block font-medium whitespace-normal break-words cursor-pointer px-5 text-center mb-2 mt-2 dark:text-dark text-gray-700 ${
               showEditButton ? "ml-8" : ""
-            } md:text-xl ua ua-link`}
+            } md:text-xl ua ua-link hover:cursor-pointer`}
             onClick={handleTitleClick}
           >
             <span 
-              className="cursor-text select-text"
+              className="select-text hover:cursor-pointer"
               onMouseDown={(e) => e.stopPropagation()}
               onMouseUp={(e) => e.stopPropagation()}
             >

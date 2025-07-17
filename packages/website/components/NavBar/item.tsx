@@ -19,9 +19,9 @@ function LinkItemAtom(props: {
     const currentPath = router.pathname;
     const itemPath = item.value;
     
-    // 首页特殊处理
-    if (itemPath === '/' && currentPath === '/') {
-      return true;
+    // 首页特殊处理 - 包括分页页面
+    if (itemPath === '/') {
+      return currentPath === '/' || currentPath === '/page/[p]';
     }
     
     // 其他页面：如果当前路径以导航项路径开头，则为激活状态
@@ -80,17 +80,18 @@ function LinkItemWithChildren(props: { item: MenuItem }) {
     const currentPath = router.pathname;
     
     // 检查父菜单项本身是否激活
-    if (item.value === '/' && currentPath === '/') {
-      return true;
-    }
-    if (item.value !== '/' && currentPath.startsWith(item.value)) {
+    if (item.value === '/') {
+      if (currentPath === '/' || currentPath === '/page/[p]') {
+        return true;
+      }
+    } else if (item.value !== '/' && currentPath.startsWith(item.value)) {
       return true;
     }
     
     // 检查子菜单项是否有激活的
     return item.children?.some(child => {
-      if (child.value === '/' && currentPath === '/') {
-        return true;
+      if (child.value === '/') {
+        return currentPath === '/' || currentPath === '/page/[p]';
       }
       if (child.value !== '/' && currentPath.startsWith(child.value)) {
         return true;
@@ -119,7 +120,7 @@ function LinkItemWithChildren(props: { item: MenuItem }) {
         />
 
         <div
-          className="card-shadow bg-white block transition-all dark:text-dark dark:bg-dark-1 dark:card-shadow-dark"
+          className="card-shadow bg-white block transition-all dark:text-dark dark:bg-dark-1 dark:card-shadow-dark rounded-lg"
           style={{
             position: "absolute",
             minWidth: 100,

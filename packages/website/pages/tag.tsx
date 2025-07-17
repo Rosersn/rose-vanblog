@@ -1,14 +1,13 @@
 import Link from "next/link";
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import AuthorCard, { AuthorCardProps } from "../components/AuthorCard";
 import Layout from "../components/Layout";
-import { encodeQuerystring } from "../utils/encode";
+import { TagListSkeleton } from "../components/Loading";
 import { LayoutProps } from "../utils/getLayoutProps";
 import { getTagPageProps } from "../utils/getPageProps";
 import { revalidate } from "../utils/loadConfig";
-import { getTarget } from "../components/Link/tools";
 
-interface TagWithCount {
+export interface TagWithCount {
   name: string;
   articleCount: number;
 }
@@ -22,12 +21,13 @@ export interface TagPageProps {
 
 const TagPage = (props: TagPageProps) => {
   const [allTags, setAllTags] = useState<TagWithCount[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // 默认为loading状态
   const [searchKeyword, setSearchKeyword] = useState("");
   const [sortBy, setSortBy] = useState<'name' | 'articleCount'>('articleCount');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [loadProgress, setLoadProgress] = useState({ current: 0, total: 0 });
   const [hasStartedLoading, setHasStartedLoading] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   // 分批加载所有标签
   const loadAllTags = useCallback(async () => {
@@ -103,13 +103,27 @@ const TagPage = (props: TagPageProps) => {
       }
     } finally {
       setLoading(false);
+      setInitialLoadComplete(true);
     }
   }, [props.hotTags, props.tags, hasStartedLoading]);
 
-  // 初始化加载
+  // 初始化：优先使用SSG数据，然后异步加载完整数据
   useEffect(() => {
-    loadAllTags();
-  }, [loadAllTags]);
+    // 首先使用SSG的热门标签数据，立即显示内容
+    if (props.hotTags && props.hotTags.length > 0) {
+      setAllTags(props.hotTags);
+      setLoading(false);
+      setInitialLoadComplete(true);
+      
+      // 异步加载完整数据
+      setTimeout(() => {
+        loadAllTags();
+      }, 100);
+    } else {
+      // 没有热门标签数据，直接加载
+      loadAllTags();
+    }
+  }, [loadAllTags, props.hotTags]);
 
   // 搜索和排序处理
   const filteredAndSortedTags = useMemo(() => {
@@ -153,6 +167,7 @@ const TagPage = (props: TagPageProps) => {
   const handleReload = () => {
     setHasStartedLoading(false);
     setAllTags([]);
+    setInitialLoadComplete(false);
     loadAllTags();
   };
 
@@ -162,65 +177,77 @@ const TagPage = (props: TagPageProps) => {
       title="标签"
       sideBar={<AuthorCard option={props.authorCardProps}></AuthorCard>}
     >
-      <div className="bg-white card-shadow dark:bg-dark dark:card-shadow-dark py-4 px-8 md:py-6 md:px-8">
+      <div className="bg-white card-shadow dark:bg-dark dark:card-shadow-dark py-4 px-8 md:py-6 md:px-8 rounded-lg">
         <div className="flex items-center justify-between mb-4">
           <div className="text-lg md:text-xl text-gray-700 dark:text-dark">
             标签
           </div>
           <button
             onClick={handleReload}
-            disabled={loading}
+            disabled={loading && !initialLoadComplete}
             className="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
           >
-            {loading ? '加载中...' : '刷新'}
+            {loading && !initialLoadComplete ? '加载中...' : '刷新'}
           </button>
         </div>
         
         {/* 搜索和排序控件 */}
-        <div className="mb-6 flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
+        <div className="mb-6 space-y-4">
+          {/* 搜索框 */}
+          <div className="flex gap-2">
             <input
               type="text"
-              placeholder="搜索标签..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
               value={searchKeyword}
               onChange={(e) => setSearchKeyword(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handleSearch();
-                }
-              }}
+              placeholder="搜索标签..."
+              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
-          </div>
-          <div className="flex gap-2">
-            <select
-              value={`${sortBy}-${sortOrder}`}
-              onChange={(e) => {
-                const [newSortBy, newSortOrder] = e.target.value.split('-') as ['name' | 'articleCount', 'asc' | 'desc'];
-                handleSortChange(newSortBy, newSortOrder);
-              }}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
-            >
-              <option value="articleCount-desc" className="dark:bg-gray-800 dark:text-gray-100">按文章数量 (降序)</option>
-              <option value="articleCount-asc" className="dark:bg-gray-800 dark:text-gray-100">按文章数量 (升序)</option>
-              <option value="name-asc" className="dark:bg-gray-800 dark:text-gray-100">按名称 (A-Z)</option>
-              <option value="name-desc" className="dark:bg-gray-800 dark:text-gray-100">按名称 (Z-A)</option>
-            </select>
             <button
               onClick={handleSearch}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
             >
               搜索
             </button>
           </div>
+
+          {/* 排序控件 */}
+          <div className="flex flex-wrap gap-2 text-sm">
+            <span className="text-gray-600 dark:text-gray-400">排序：</span>
+            <button
+              onClick={() => handleSortChange('articleCount', sortOrder)}
+              className={`px-2 py-1 rounded ${
+                sortBy === 'articleCount' 
+                  ? 'bg-blue-500 text-white' 
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              }`}
+            >
+              按文章数
+            </button>
+            <button
+              onClick={() => handleSortChange('name', sortOrder)}
+              className={`px-2 py-1 rounded ${
+                sortBy === 'name' 
+                  ? 'bg-blue-500 text-white' 
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              }`}
+            >
+              按名称
+            </button>
+            <button
+              onClick={() => handleSortChange(sortBy, sortOrder === 'asc' ? 'desc' : 'asc')}
+              className="px-2 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+            >
+              {sortOrder === 'asc' ? '↑ 升序' : '↓ 降序'}
+            </button>
+          </div>
         </div>
 
-        {/* 加载状态和进度 */}
-        {loading && (
+        {/* 后台加载状态和进度（不影响初始显示） */}
+        {loading && hasStartedLoading && initialLoadComplete && (
           <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
             <div className="flex items-center justify-between mb-2">
               <div className="text-blue-600 dark:text-blue-400 font-medium">
-                正在加载标签数据...
+                正在更新标签数据...
               </div>
               {loadProgress.total > 0 && (
                 <div className="text-sm text-blue-500 dark:text-blue-300">
@@ -237,80 +264,46 @@ const TagPage = (props: TagPageProps) => {
               </div>
             )}
             <div className="text-xs text-blue-500 dark:text-blue-300 mt-1">
-              由于标签数量较多，初次加载可能需要一些时间，请耐心等待...
+              正在后台更新数据，请继续浏览...
             </div>
           </div>
         )}
 
         {/* 标签列表 */}
-        {!loading && (
-          <>
-            <div className="flex flex-wrap gap-3">
-              {filteredAndSortedTags.map((tag) => (
-                <Link
-                  href={`/tag/${encodeQuerystring(tag.name)}`}
-                  key={`tag-${tag.name}`}
-                  target={getTarget(
-                    props.layoutProps.openArticleLinksInNewWindow == "true"
-                  )}
-                >
-                  <div className="group flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-all transform hover:scale-105 cursor-pointer">
-                    <span className="text-gray-700 dark:text-dark group-hover:text-gray-900 dark:group-hover:text-dark-hover">
-                      {tag.name}
-                    </span>
-                    {tag.articleCount > 0 && (
-                      <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">
-                        {tag.articleCount}
-                      </span>
-                    )}
-                  </div>
-                </Link>
-              ))}
-            </div>
+        {!initialLoadComplete ? (
+          <TagListSkeleton />
+        ) : filteredAndSortedTags.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {filteredAndSortedTags.map((tag) => (
+              <Link
+                key={tag.name}
+                href={`/tag/${encodeURIComponent(tag.name)}`}
+                className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                <span>{tag.name}</span>
+                {tag.articleCount > 0 && (
+                  <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">
+                    ({tag.articleCount})
+                  </span>
+                )}
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            {searchKeyword.trim() ? '没有找到匹配的标签' : '暂无标签'}
+          </div>
+        )}
 
-            {/* 显示统计信息 */}
-            <div className="mt-6 text-center text-gray-500 dark:text-gray-400 text-sm">
-              {searchKeyword ? (
-                <>
-                  找到 {filteredAndSortedTags.length} 个标签
-                  <span className="ml-2">(搜索: "{searchKeyword}")</span>
-                  <span className="ml-2">• 总计 {allTags.length} 个标签</span>
-                </>
-              ) : (
-                <>共 {allTags.length} 个标签</>
-              )}
-            </div>
-
-            {/* 如果没有找到标签 */}
-            {filteredAndSortedTags.length === 0 && searchKeyword && (
-              <div className="text-center py-8">
-                <div className="text-gray-500 dark:text-gray-400 mb-2">
-                  没有找到包含 "{searchKeyword}" 的标签
-                </div>
-                <button
-                  onClick={() => setSearchKeyword("")}
-                  className="text-blue-500 hover:text-blue-600 transition-colors"
-                >
-                  清除搜索条件
-                </button>
-              </div>
+        {/* 统计信息 */}
+        {initialLoadComplete && (
+          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400">
+            {searchKeyword.trim() ? (
+              <p>找到 {filteredAndSortedTags.length} 个匹配的标签</p>
+            ) : (
+              <p>共 {allTags.length} 个标签</p>
             )}
-
-            {/* 如果完全没有标签 */}
-            {allTags.length === 0 && !loading && (
-              <div className="text-center py-8">
-                <div className="text-gray-500 dark:text-gray-400 mb-2">
-                  暂无标签数据
-                </div>
-                <button
-                  onClick={handleReload}
-                  className="text-blue-500 hover:text-blue-600 transition-colors"
-                >
-                  重新加载
-                </button>
-              </div>
-            )}
-          </>
+          </div>
         )}
       </div>
     </Layout>
@@ -328,7 +321,7 @@ export async function getStaticProps(): Promise<{
   // 尝试获取少量热门标签作为备用数据
   let hotTags: TagWithCount[] = [];
   try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/public/tags/hot?limit=100`);
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/public/tags/hot?limit=100`);
     const result = await response.json();
     if (result.statusCode === 200) {
       hotTags = result.data || [];

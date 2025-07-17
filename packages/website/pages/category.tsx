@@ -19,7 +19,7 @@ const CategoryPage = (props: CategoryPageProps) => {
       title="分类"
       sideBar={<AuthorCard option={props.authorCardProps} />}
     >
-      <div className="bg-white card-shadow dark:bg-dark dark:card-shadow-dark py-4 px-8 md:py-6 md:px-8">
+      <div className="bg-white card-shadow dark:bg-dark dark:card-shadow-dark py-4 px-8 md:py-6 md:px-8 rounded-lg">
         <div>
           <div className="text-2xl md:text-3xl text-gray-700 text-center dark:text-dark">
             分类

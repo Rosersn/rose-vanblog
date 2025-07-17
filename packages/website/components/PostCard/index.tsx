@@ -1,18 +1,18 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { encodeQuerystring } from "../../utils/encode";
+import { hasToc } from "../../utils/hasToc";
 import AlertCard from "../AlertCard";
 import CopyRight from "../CopyRight";
+import { getTarget } from "../Link/tools";
+import Markdown from "../Markdown";
 import Reward from "../Reward";
+import TocMobile from "../TocMobile";
 import TopPinIcon from "../TopPinIcon";
 import UnLockCard from "../UnLockCard";
 import WaLine from "../WaLine";
 import { PostBottom } from "./bottom";
 import { SubTitle, Title } from "./title";
-import { getTarget } from "../Link/tools";
-import TocMobile from "../TocMobile";
-import { hasToc } from "../../utils/hasToc";
-import Markdown from "../Markdown";
-import { encodeQuerystring } from "../../utils/encode";
 
 export default function (props: {
   id: number | string;
@@ -89,7 +89,7 @@ export default function (props: {
       <div
         style={{ position: "relative" }}
         id="post-card"
-        className="overflow-hidden post-card bg-white card-shadow py-4 px-1 sm:px-3 md:py-6 md:px-5 dark:bg-dark  dark:nav-shadow-dark"
+        className="overflow-hidden post-card bg-white card-shadow py-4 px-1 sm:px-3 md:py-6 md:px-5 dark:bg-dark dark:nav-shadow-dark rounded-lg"
       >
         {props.top != 0 && <TopPinIcon></TopPinIcon>}
         <Title
