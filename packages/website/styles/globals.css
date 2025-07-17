@@ -4,10 +4,28 @@
 
 @layer base {
   html {
-    @apply bg-slate-100;
+    /* 优雅的苹果风格渐变背景 */
+    background: linear-gradient(135deg, 
+      #e8f0f8 0%, 
+      #d6e4f0 25%, 
+      #f0f6fa 50%, 
+      #f4f8fc 75%, 
+      #dae4ec 100%
+    );
+    background-attachment: fixed;
+    min-height: 100vh;
   }
   html.dark {
-    background-color: #1d2025;
+    /* 优雅的深色模式渐变背景 */
+    background: linear-gradient(135deg, 
+      #151720 0%, 
+      #171a26 25%, 
+      #191c28 50%, 
+      #1b1e2a 75%, 
+      #1d202c 100%
+    );
+    background-attachment: fixed;
+    min-height: 100vh;
   }
   pre,
   code {
