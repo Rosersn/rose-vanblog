@@ -21,13 +21,39 @@ export interface TagPageProps {
 
 const TagPage = (props: TagPageProps) => {
   const [allTags, setAllTags] = useState<TagWithCount[]>([]);
-  const [loading, setLoading] = useState(true); // 默认为loading状态
+  const [loading, setLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [sortBy, setSortBy] = useState<'name' | 'articleCount'>('articleCount');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [loadProgress, setLoadProgress] = useState({ current: 0, total: 0 });
   const [hasStartedLoading, setHasStartedLoading] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+
+  // 统一的标签排序函数，确保排序逻辑一致
+  const sortTags = useCallback((tags: TagWithCount[], sortField: 'name' | 'articleCount', order: 'asc' | 'desc') => {
+    return [...tags].sort((a, b) => {
+      let compareValue = 0;
+      
+      if (sortField === 'name') {
+        // 改进的名称排序：支持中文、英文、数字等混合内容
+        compareValue = a.name.localeCompare(b.name, ['zh-CN', 'en'], {
+          numeric: true,
+          sensitivity: 'base'
+        });
+      } else if (sortField === 'articleCount') {
+        compareValue = a.articleCount - b.articleCount;
+        // 当文章数相同时，按名称排序确保一致性
+        if (compareValue === 0) {
+          compareValue = a.name.localeCompare(b.name, ['zh-CN', 'en'], {
+            numeric: true,
+            sensitivity: 'base'
+          });
+        }
+      }
+      
+      return order === 'asc' ? compareValue : -compareValue;
+    });
+  }, []);
 
   // 分批加载所有标签
   const loadAllTags = useCallback(async () => {
@@ -82,48 +108,55 @@ const TagPage = (props: TagPageProps) => {
       }
 
       if (allLoadedTags.length > 0) {
-        setAllTags(allLoadedTags);
+        // 使用统一的排序逻辑
+        const sortedTags = sortTags(allLoadedTags, sortBy, sortOrder);
+        setAllTags(sortedTags);
       } else {
         // 如果分页API完全失败，使用备用数据
         if (props.hotTags && props.hotTags.length > 0) {
-          setAllTags(props.hotTags);
+          const sortedTags = sortTags(props.hotTags, sortBy, sortOrder);
+          setAllTags(sortedTags);
         } else {
           const tagsWithCount = props.tags.map(tag => ({ name: tag, articleCount: 0 }));
-          setAllTags(tagsWithCount);
+          const sortedTags = sortTags(tagsWithCount, sortBy, sortOrder);
+          setAllTags(sortedTags);
         }
       }
     } catch (error) {
       console.error('加载标签失败:', error);
       // 使用备用数据
       if (props.hotTags && props.hotTags.length > 0) {
-        setAllTags(props.hotTags);
+        const sortedTags = sortTags(props.hotTags, sortBy, sortOrder);
+        setAllTags(sortedTags);
       } else {
         const tagsWithCount = props.tags.map(tag => ({ name: tag, articleCount: 0 }));
-        setAllTags(tagsWithCount);
+        const sortedTags = sortTags(tagsWithCount, sortBy, sortOrder);
+        setAllTags(sortedTags);
       }
     } finally {
       setLoading(false);
       setInitialLoadComplete(true);
     }
-  }, [props.hotTags, props.tags, hasStartedLoading]);
+  }, [props.hotTags, props.tags, hasStartedLoading, sortBy, sortOrder, sortTags]);
 
-  // 初始化：优先使用SSG数据，然后异步加载完整数据
+  // 初始化：优先使用SSG数据，但应用统一的排序逻辑避免闪动
   useEffect(() => {
-    // 首先使用SSG的热门标签数据，立即显示内容
+    // 首先使用SSG的热门标签数据，但立即应用当前的排序设置
     if (props.hotTags && props.hotTags.length > 0) {
-      setAllTags(props.hotTags);
+      const sortedTags = sortTags(props.hotTags, sortBy, sortOrder);
+      setAllTags(sortedTags);
       setLoading(false);
       setInitialLoadComplete(true);
       
-      // 异步加载完整数据
+      // 延迟异步加载完整数据，避免立即的重新排序
       setTimeout(() => {
         loadAllTags();
-      }, 100);
+      }, 500); // 增加延迟，让用户先看到稳定的界面
     } else {
       // 没有热门标签数据，直接加载
       loadAllTags();
     }
-  }, [loadAllTags, props.hotTags]);
+  }, [loadAllTags, props.hotTags, sortBy, sortOrder, sortTags]);
 
   // 搜索和排序处理
   const filteredAndSortedTags = useMemo(() => {
@@ -136,21 +169,9 @@ const TagPage = (props: TagPageProps) => {
       );
     }
 
-    // 排序
-    filtered.sort((a, b) => {
-      let compareValue = 0;
-      
-      if (sortBy === 'name') {
-        compareValue = a.name.localeCompare(b.name, 'zh-CN');
-      } else if (sortBy === 'articleCount') {
-        compareValue = a.articleCount - b.articleCount;
-      }
-      
-      return sortOrder === 'asc' ? compareValue : -compareValue;
-    });
-
-    return filtered;
-  }, [allTags, searchKeyword, sortBy, sortOrder]);
+    // 使用统一的排序函数
+    return sortTags(filtered, sortBy, sortOrder);
+  }, [allTags, searchKeyword, sortBy, sortOrder, sortTags]);
 
   // 处理搜索
   const handleSearch = () => {
@@ -161,6 +182,12 @@ const TagPage = (props: TagPageProps) => {
   const handleSortChange = (newSortBy: 'name' | 'articleCount', newSortOrder: 'asc' | 'desc') => {
     setSortBy(newSortBy);
     setSortOrder(newSortOrder);
+    
+    // 立即重新排序现有数据，避免等待新数据加载
+    if (allTags.length > 0) {
+      const sortedTags = sortTags(allTags, newSortBy, newSortOrder);
+      setAllTags(sortedTags);
+    }
   };
 
   // 重新加载标签
