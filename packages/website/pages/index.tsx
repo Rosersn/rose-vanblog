@@ -24,28 +24,23 @@ const Home = (props: IndexPageProps) => {
   const [articlesLoaded, setArticlesLoaded] = useState(false);
   const [authorCardLoaded, setAuthorCardLoaded] = useState(false);
 
-  // 优化数据加载检测
+  // 快速加载检测，最小化骨架屏时间
   useEffect(() => {
-    // 检查文章数据是否有效
+    // 对于SSG页面，数据应该立即可用
     if (props.articles && Array.isArray(props.articles)) {
-      // 如果是SSG渲染且有数据，立即显示内容
-      if (props.articles.length > 0) {
-        setArticlesLoaded(true);
-      } else {
-        // 如果没有文章，也立即显示（避免无限骨架屏）
-        setTimeout(() => setArticlesLoaded(true), 100);
-      }
+      setArticlesLoaded(true);
     } else {
-      // 数据无效时，短暂延迟后显示
-      setTimeout(() => setArticlesLoaded(true), 200);
+      // 即使数据无效，也快速显示内容避免长时间骨架屏
+      const timer = setTimeout(() => setArticlesLoaded(true), 50);
+      return () => clearTimeout(timer);
     }
     
-    // 检查作者卡片数据是否有效
+    // 作者卡片数据检测
     if (props.authorCardProps && props.authorCardProps.author) {
       setAuthorCardLoaded(true);
     } else {
-      // 短暂延迟后显示骨架屏的替代内容
-      setTimeout(() => setAuthorCardLoaded(true), 150);
+      const timer = setTimeout(() => setAuthorCardLoaded(true), 30);
+      return () => clearTimeout(timer);
     }
   }, [props.articles, props.authorCardProps]);
 

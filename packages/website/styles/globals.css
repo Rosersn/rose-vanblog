@@ -3,6 +3,16 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --skeleton-bg: rgb(255, 255, 255);
+    --skeleton-pulse: rgb(248, 250, 252);
+  }
+  
+  html.dark {
+    --skeleton-bg: rgb(38, 40, 44);
+    --skeleton-pulse: rgb(55, 65, 81);
+  }
+  
   html {
     /* 优雅的苹果风格渐变背景 */
     background: linear-gradient(135deg, 
@@ -260,37 +270,21 @@ body .ua-link::before {
   background-color: rgba(59, 130, 246, 0.4);
 }
 
-/* 骨架屏动画效果 */
+/* 骨架屏动画效果 - 使用CSS变量确保主题一致性 */
 @keyframes skeleton-pulse {
   0% {
-    background-color: rgb(243, 244, 246); /* gray-100 */
+    background-color: var(--skeleton-bg);
   }
   50% {
-    background-color: rgb(229, 231, 235); /* gray-200 */
+    background-color: var(--skeleton-pulse);
   }
   100% {
-    background-color: rgb(243, 244, 246); /* gray-100 */
-  }
-}
-
-@keyframes skeleton-pulse-dark {
-  0% {
-    background-color: rgb(31, 41, 55); /* gray-800 */
-  }
-  50% {
-    background-color: rgb(55, 65, 81); /* gray-700 */
-  }
-  100% {
-    background-color: rgb(31, 41, 55); /* gray-800 */
+    background-color: var(--skeleton-bg);
   }
 }
 
 .animate-pulse {
   animation: skeleton-pulse 2s ease-in-out infinite;
-}
-
-.dark .animate-pulse {
-  animation: skeleton-pulse-dark 2s ease-in-out infinite;
 }
 
 /* 内容淡入动画 */

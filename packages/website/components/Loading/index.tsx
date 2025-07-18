@@ -1,6 +1,6 @@
 import React from "react";
 
-// 骨架屏组件
+// 骨架屏组件 - 使用CSS变量确保主题一致性
 export function Skeleton({ 
   className = "", 
   height = "h-4", 
@@ -9,7 +9,8 @@ export function Skeleton({
 }) {
   return (
     <div 
-      className={`bg-gray-100 dark:bg-gray-800 animate-pulse ${height} ${width} ${rounded} ${className}`}
+      className={`animate-pulse ${height} ${width} ${rounded} ${className}`}
+      style={{ backgroundColor: 'var(--skeleton-pulse)' }}
     />
   );
 }
