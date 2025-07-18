@@ -1,17 +1,17 @@
+import ContentSearchModal from '@/components/ContentSearchModal';
+import ConvertToDocumentModal from '@/components/ConvertToDocumentModal';
 import ImportDraftModal from '@/components/ImportDraftModal';
 import NewDraftModal from '@/components/NewDraftModal';
-import ConvertToDocumentModal from '@/components/ConvertToDocumentModal';
-import ContentSearchModal from '@/components/ContentSearchModal';
 import { getDraftsByOption, getSiteInfo } from '@/services/van-blog/api';
+import { batchDelete, batchExport } from '@/services/van-blog/batch';
 import { useNum } from '@/services/van-blog/useNum';
-import { PageContainer, ProTable } from '@ant-design/pro-components';
-import RcResizeObserver from 'rc-resize-observer';
-import { useMemo, useRef, useState, useEffect } from 'react';
-import { history } from 'umi';
-import { getColumns, draftKeysObj, draftKeysObjSmall } from './columes';
-import { Button, Space, message, Tooltip } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
-import { batchExport, batchDelete } from '@/services/van-blog/batch';
+import { PageContainer, ProTable } from '@ant-design/pro-components';
+import { Button, message, Space, Tooltip } from 'antd';
+import RcResizeObserver from 'rc-resize-observer';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { history } from 'umi';
+import { draftKeysObj, draftKeysObjSmall, getColumns } from './columes';
 
 export default () => {
   const actionRef = useRef();
@@ -23,6 +23,7 @@ export default () => {
   const [showConvertToDocumentModal, setShowConvertToDocumentModal] = useState(false);
   const [convertingDraft, setConvertingDraft] = useState(null);
   const [showContentSearch, setShowContentSearch] = useState(false);
+  const [isUserCustomized, setIsUserCustomized] = useState(false);
 
   // 处理搜索结果选择
   const handleSearchSelect = (draft) => {
@@ -60,7 +61,7 @@ export default () => {
       }
     };
     fetchSiteInfo();
-  }, [setPageSize]);
+  }, []); // 只在组件挂载时执行一次
 
   const searchSpan = useMemo(() => {
     if (!simpleSearch) {
@@ -87,10 +88,14 @@ export default () => {
           setSimpleSearch(offset.width < 750);
           const r = offset.width < 800;
           setSimplePage(offset.width < 600);
-          if (r) {
-            setColKeys(draftKeysObjSmall);
-          } else {
-            setColKeys(draftKeysObj);
+          
+          // 只在用户未自定义列设置时才应用响应式默认配置
+          if (!isUserCustomized) {
+            if (r) {
+              setColKeys(draftKeysObjSmall);
+            } else {
+              setColKeys(draftKeysObj);
+            }
           }
           //  小屏幕的话把默认的 col keys 删掉一些
         }}
@@ -197,6 +202,8 @@ export default () => {
             value: colKeys,
             onChange(value) {
               setColKeys(value);
+              // 标记用户已自定义列设置
+              setIsUserCustomized(true);
             },
           }}
           rowKey="id"
@@ -228,6 +235,21 @@ export default () => {
                 内容搜索
               </Button>
             </Tooltip>,
+            isUserCustomized && (
+              <Tooltip title="恢复响应式列设置" key="resetColumns">
+                <Button
+                  onClick={() => {
+                    const currentWidth = window.innerWidth;
+                    const isSmall = currentWidth < 800;
+                    setColKeys(isSmall ? draftKeysObjSmall : draftKeysObj);
+                    setIsUserCustomized(false);
+                    message.success('已恢复默认列设置');
+                  }}
+                >
+                  重置列设置
+                </Button>
+              </Tooltip>
+            ),
             <NewDraftModal
               key="newDraft123"
               onFinish={(data) => {

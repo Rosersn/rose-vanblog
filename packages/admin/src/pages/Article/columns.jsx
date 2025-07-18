@@ -54,6 +54,7 @@ const getTopColor = (topValue) => {
 
 export const columns = [
   {
+    key: 'id',
     dataIndex: 'id',
     valueType: 'number',
     title: 'ID',
@@ -61,6 +62,7 @@ export const columns = [
     search: false,
   },
   {
+    key: 'title',
     title: '标题',
     dataIndex: 'title',
     width: 500,
@@ -90,6 +92,7 @@ export const columns = [
     },
   },
   {
+    key: 'category',
     title: '分类',
     dataIndex: 'category',
     valueType: 'select',
@@ -104,6 +107,7 @@ export const columns = [
     },
   },
   {
+    key: 'tags',
     title: '标签',
     dataIndex: 'tags',
     valueType: 'select',
@@ -313,7 +317,8 @@ export const columns = [
   },
   {
     title: '创建时间',
-    dataIndex: 'createdAt',
+    key: 'createdAtSearch',
+    dataIndex: 'createdAt', 
     valueType: 'dateRange',
     hideInTable: true,
     search: {

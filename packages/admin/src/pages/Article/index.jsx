@@ -1,14 +1,14 @@
+import ContentSearchModal from '@/components/ContentSearchModal';
 import ImportArticleModal from '@/components/ImportArticleModal';
 import NewArticleModal from '@/components/NewArticleModal';
-import ContentSearchModal from '@/components/ContentSearchModal';
 import { getArticlesByOption, getSiteInfo } from '@/services/van-blog/api';
-import { batchExport, batchDelete } from '@/services/van-blog/batch';
+import { batchDelete, batchExport } from '@/services/van-blog/batch';
 import { useNum } from '@/services/van-blog/useNum';
-import { PageContainer, ProTable } from '@ant-design/pro-components';
-import { Button, Space, message, Tooltip } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
+import { PageContainer, ProTable } from '@ant-design/pro-components';
+import { Button, message, Space, Tooltip } from 'antd';
 import RcResizeObserver from 'rc-resize-observer';
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { history } from 'umi';
 import { articleObjAll, articleObjSmall, columns } from './columns';
 
@@ -20,6 +20,7 @@ export default () => {
   const [defaultPageSize, setDefaultPageSize] = useState(20);
   const [pageSize, setPageSize] = useNum(defaultPageSize, 'article-page-size');
   const [showContentSearch, setShowContentSearch] = useState(false);
+  const [isUserCustomized, setIsUserCustomized] = useState(false);
 
   // 处理搜索结果选择
   const handleSearchSelect = (article) => {
@@ -44,7 +45,7 @@ export default () => {
       }
     };
     fetchSiteInfo();
-  }, [setPageSize]);
+  }, []); // 只在组件挂载时执行一次
 
   const searchSpan = useMemo(() => {
     if (!simpleSearch) {
@@ -68,10 +69,14 @@ export default () => {
 
           setSimpleSearch(offset.width < 750);
           setSimplePage(offset.width < 600);
-          if (r) {
-            setColKeys(articleObjSmall);
-          } else {
-            setColKeys(articleObjAll);
+          
+          // 只在用户未自定义列设置时才应用响应式默认配置
+          if (!isUserCustomized) {
+            if (r) {
+              setColKeys(articleObjSmall);
+            } else {
+              setColKeys(articleObjAll);
+            }
           }
           //  小屏幕的话把默认的 col keys 删掉一些
         }}
@@ -184,6 +189,8 @@ export default () => {
             value: colKeys,
             onChange(value) {
               setColKeys(value);
+              // 标记用户已自定义列设置
+              setIsUserCustomized(true);
             },
           }}
           rowKey="id"
@@ -215,6 +222,21 @@ export default () => {
                 内容搜索
               </Button>
             </Tooltip>,
+            isUserCustomized && (
+              <Tooltip title="恢复响应式列设置" key="resetColumns">
+                <Button
+                  onClick={() => {
+                    const currentWidth = window.innerWidth;
+                    const isSmall = currentWidth < 1000;
+                    setColKeys(isSmall ? articleObjSmall : articleObjAll);
+                    setIsUserCustomized(false);
+                    message.success('已恢复默认列设置');
+                  }}
+                >
+                  重置列设置
+                </Button>
+              </Tooltip>
+            ),
             <Button
               key="editAboutMe"
               onClick={() => {
