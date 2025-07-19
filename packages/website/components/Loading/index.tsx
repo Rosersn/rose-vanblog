@@ -1,4 +1,5 @@
 import React from "react";
+import AuthorCardHover from "../AuthorCard/hover"; // 导入AuthorCardHover组件
 
 // 骨架屏组件 - 使用CSS变量确保主题一致性
 export function Skeleton({ 
@@ -48,7 +49,7 @@ export function PostCardSkeleton({ count = 1 }) {
 
 // 侧边栏作者卡片骨架屏
 export function AuthorCardSkeleton() {
-  return (
+  const skeletonContent = (
     <div className="w-52 flex flex-col justify-center items-center bg-white dark:bg-dark pt-6 pb-4 card-shadow dark:card-shadow-dark ml-2 rounded-lg skeleton-container layout-transition">
       <Skeleton height="h-16" width="w-16" rounded="rounded-full" className="mb-3" />
       <Skeleton height="h-5" width="w-20" className="mb-2" />
@@ -62,7 +63,19 @@ export function AuthorCardSkeleton() {
           <Skeleton height="h-5" width="w-8" className="mb-1" />
           <Skeleton height="h-3" width="w-8" />
         </div>
+        <div className="text-center">
+          <Skeleton height="h-5" width="w-8" className="mb-1" />
+          <Skeleton height="h-3" width="w-8" />
+        </div>
       </div>
+    </div>
+  );
+  
+  return (
+    <div id="author-card" className="sticky">
+      <AuthorCardHover>
+        {skeletonContent}
+      </AuthorCardHover>
     </div>
   );
 }

@@ -1,0 +1,65 @@
+/* 
+  Apple风格卡片悬停效果模块
+  实现鼠标悬停时的立体感效果
+*/
+
+.postCardHover {
+  position: relative;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform, box-shadow;
+  transform: translateZ(0);
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  -webkit-tap-highlight-color: transparent; /* 移除移动设备上的点击高亮 */
+}
+
+/* 鼠标悬停时的3D变换效果 */
+.postCardHover:hover {
+  transform: translateY(-6px) translateZ(0);
+  box-shadow: 
+    0 12px 24px rgba(0, 0, 0, 0.1), 
+    0 6px 12px rgba(0, 0, 0, 0.05),
+    0 4px 6px rgba(0, 0, 0, 0.03),
+    0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+/* 适用于暗色模式 */
+:global(.dark) .postCardHover:hover {
+  box-shadow: 
+    0 12px 24px rgba(0, 0, 0, 0.25), 
+    0 6px 12px rgba(0, 0, 0, 0.15),
+    0 4px 6px rgba(0, 0, 0, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* 添加微妙的倾斜效果响应鼠标位置 */
+.postCardTilt {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+/* 优化移动设备上的性能 */
+@media (max-width: 768px) {
+  .postCardHover:hover {
+    transform: translateY(-4px) translateZ(0); /* 在移动设备上减小位移效果 */
+    box-shadow: 
+      0 8px 16px rgba(0, 0, 0, 0.08), 
+      0 4px 8px rgba(0, 0, 0, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease; /* 在移动设备上更快的过渡 */
+  }
+}
+
+/* 减少不必要的动画，提高性能 */
+@media (prefers-reduced-motion: reduce) {
+  .postCardHover,
+  .postCardHover:hover {
+    transition: none;
+    transform: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  :global(.dark) .postCardHover:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+} 

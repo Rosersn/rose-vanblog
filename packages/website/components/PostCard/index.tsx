@@ -12,6 +12,7 @@ import TopPinIcon from "../TopPinIcon";
 import UnLockCard from "../UnLockCard";
 import WaLine from "../WaLine";
 import { PostBottom } from "./bottom";
+import PostCardHover from "./hover";
 import { SubTitle, Title } from "./title";
 
 export default function (props: {
@@ -84,118 +85,128 @@ export default function (props: {
     return false;
   }, [props.type, props.content]);
 
+  const cardContent = (
+    <div
+      style={{ position: "relative" }}
+      id="post-card"
+      className="overflow-hidden post-card bg-white card-shadow py-4 px-1 sm:px-3 md:py-6 md:px-5 dark:bg-dark dark:nav-shadow-dark rounded-lg"
+    >
+      {props.top != 0 && <TopPinIcon></TopPinIcon>}
+      <Title
+        type={props.type}
+        id={props.id}
+        title={props.title}
+        openArticleLinksInNewWindow={props.openArticleLinksInNewWindow}
+        showEditButton={props.showEditButton}
+      />
+
+      <SubTitle
+        openArticleLinksInNewWindow={props.openArticleLinksInNewWindow}
+        type={props.type}
+        id={props.id}
+        updatedAt={props.updatedAt}
+        createdAt={props.createdAt}
+        catelog={props.catelog}
+        enableComment={props.enableComment}
+      />
+      
+      {props.type === "article" && props.tags && props.tags.length > 0 && (
+        <div className="flex justify-center mt-3 mb-2">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+            {props.tags.map((tag) => (
+              <Link
+                key={`article-tag-${tag}`}
+                href={`/tag/${encodeQuerystring(tag)}`}
+                target={getTarget(props.openArticleLinksInNewWindow)}
+              >
+                <span className="text-sm text-gray-800 hover:text-black dark:text-dark dark:hover:text-dark-hover border-b border-gray-800 hover:border-black dark:border-dark dark:hover:border-dark-hover cursor-pointer transition-colors duration-200">
+                  {tag}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="text-sm md:text-base  text-gray-600 mt-4 mx-2">
+        {props.type == "article" && (
+          <AlertCard
+            showExpirationReminder={props.showExpirationReminder}
+            updatedAt={props.updatedAt}
+            createdAt={props.createdAt}
+          ></AlertCard>
+        )}
+        {lock ? (
+          <UnLockCard
+            setLock={setLock}
+            setContent={setContent}
+            id={props.id}
+          />
+        ) : (
+          <>
+            {showToc && <TocMobile content={calContent} />}
+            <Markdown content={calContent}></Markdown>
+          </>
+        )}
+      </div>
+
+      {props.type == "overview" && (
+        <div className="w-full flex justify-center mt-4 ">
+          <Link
+            href={`/post/${props.id}`}
+            target={getTarget(props.openArticleLinksInNewWindow)}
+          >
+            <div className=" dark:bg-dark dark:hover:bg-dark-light dark:hover:text-dark-r dark:border-dark dark:text-dark hover:bg-gray-800 hover:text-gray-50 border-2 border-gray-800 text-sm md:text-base text-gray-700 px-2 py-1 transition-all rounded">
+              阅读全文
+            </div>
+          </Link>
+        </div>
+      )}
+      {showDonate && props.pay && (
+        <Reward
+          aliPay={(props?.pay as any)[0]}
+          weChatPay={(props?.pay as any)[1]}
+          aliPayDark={(props?.payDark || ["", ""])[0]}
+          weChatPayDark={(props?.payDark || ["", ""])[1]}
+          author={props.author as any}
+          id={props.id}
+        ></Reward>
+      )}
+      {props.type == "article" && !lock && !props?.hideCopyRight && (
+        <CopyRight
+          customCopyRight={props.customCopyRight}
+          author={props.author as any}
+          id={props.id}
+          showDonate={showDonate}
+          copyrightAggreement={props.copyrightAggreement}
+        ></CopyRight>
+      )}
+
+      <PostBottom
+        type={props.type}
+        lock={lock}
+        tags={props.tags}
+        next={props.next}
+        pre={props.pre}
+        openArticleLinksInNewWindow={props.openArticleLinksInNewWindow}
+      />
+      <div
+        style={{
+          height: props.type == "about" && !showDonate ? "16px" : "0",
+        }}
+      ></div>
+    </div>
+  );
+
   return (
     <div className="post-card-wrapper">
-      <div
-        style={{ position: "relative" }}
-        id="post-card"
-        className="overflow-hidden post-card bg-white card-shadow py-4 px-1 sm:px-3 md:py-6 md:px-5 dark:bg-dark dark:nav-shadow-dark rounded-lg"
-      >
-        {props.top != 0 && <TopPinIcon></TopPinIcon>}
-        <Title
-          type={props.type}
-          id={props.id}
-          title={props.title}
-          openArticleLinksInNewWindow={props.openArticleLinksInNewWindow}
-          showEditButton={props.showEditButton}
-        />
-
-        <SubTitle
-          openArticleLinksInNewWindow={props.openArticleLinksInNewWindow}
-          type={props.type}
-          id={props.id}
-          updatedAt={props.updatedAt}
-          createdAt={props.createdAt}
-          catelog={props.catelog}
-          enableComment={props.enableComment}
-        />
-        
-        {props.type === "article" && props.tags && props.tags.length > 0 && (
-          <div className="flex justify-center mt-3 mb-2">
-            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-              {props.tags.map((tag) => (
-                <Link
-                  key={`article-tag-${tag}`}
-                  href={`/tag/${encodeQuerystring(tag)}`}
-                  target={getTarget(props.openArticleLinksInNewWindow)}
-                >
-                  <span className="text-sm text-gray-800 hover:text-black dark:text-dark dark:hover:text-dark-hover border-b border-gray-800 hover:border-black dark:border-dark dark:hover:border-dark-hover cursor-pointer transition-colors duration-200">
-                    {tag}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="text-sm md:text-base  text-gray-600 mt-4 mx-2">
-          {props.type == "article" && (
-            <AlertCard
-              showExpirationReminder={props.showExpirationReminder}
-              updatedAt={props.updatedAt}
-              createdAt={props.createdAt}
-            ></AlertCard>
-          )}
-          {lock ? (
-            <UnLockCard
-              setLock={setLock}
-              setContent={setContent}
-              id={props.id}
-            />
-          ) : (
-            <>
-              {showToc && <TocMobile content={calContent} />}
-              <Markdown content={calContent}></Markdown>
-            </>
-          )}
-        </div>
-
-        {props.type == "overview" && (
-          <div className="w-full flex justify-center mt-4 ">
-            <Link
-              href={`/post/${props.id}`}
-              target={getTarget(props.openArticleLinksInNewWindow)}
-            >
-              <div className=" dark:bg-dark dark:hover:bg-dark-light dark:hover:text-dark-r dark:border-dark dark:text-dark hover:bg-gray-800 hover:text-gray-50 border-2 border-gray-800 text-sm md:text-base text-gray-700 px-2 py-1 transition-all rounded">
-                阅读全文
-              </div>
-            </Link>
-          </div>
-        )}
-        {showDonate && props.pay && (
-          <Reward
-            aliPay={(props?.pay as any)[0]}
-            weChatPay={(props?.pay as any)[1]}
-            aliPayDark={(props?.payDark || ["", ""])[0]}
-            weChatPayDark={(props?.payDark || ["", ""])[1]}
-            author={props.author as any}
-            id={props.id}
-          ></Reward>
-        )}
-        {props.type == "article" && !lock && !props?.hideCopyRight && (
-          <CopyRight
-            customCopyRight={props.customCopyRight}
-            author={props.author as any}
-            id={props.id}
-            showDonate={showDonate}
-            copyrightAggreement={props.copyrightAggreement}
-          ></CopyRight>
-        )}
-
-        <PostBottom
-          type={props.type}
-          lock={lock}
-          tags={props.tags}
-          next={props.next}
-          pre={props.pre}
-          openArticleLinksInNewWindow={props.openArticleLinksInNewWindow}
-        />
-        <div
-          style={{
-            height: props.type == "about" && !showDonate ? "16px" : "0",
-          }}
-        ></div>
-      </div>
+      {props.type === "overview" ? (
+        <PostCardHover>
+          {cardContent}
+        </PostCardHover>
+      ) : (
+        cardContent
+      )}
       {props.type != "overview" && (
         <WaLine enable={props.enableComment} visible={true} />
       )}
