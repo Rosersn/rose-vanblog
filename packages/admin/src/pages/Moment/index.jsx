@@ -1,13 +1,13 @@
-import { useState, useRef, useEffect } from 'react';
-import { PageContainer } from '@ant-design/pro-layout';
-import { ActionType, ProTable } from '@ant-design/pro-table';
-import { Button, message, Popconfirm, Space } from 'antd';
-import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
-import { deleteMoment, getMoments, getSiteInfo } from '@/services/van-blog/api';
+import { deleteMoment, getMoments, getSiteInfo, updateMoment } from '@/services/van-blog/api';
 import { batchDeleteMoments } from '@/services/van-blog/batch';
 import { checkDemo } from '@/services/van-blog/check';
+import { CalendarOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { PageContainer } from '@ant-design/pro-layout';
+import { ProTable } from '@ant-design/pro-table';
+import { Button, DatePicker, message, Modal, Popconfirm, Space, Tooltip } from 'antd';
 import moment from 'moment';
 import 'moment/locale/zh-cn';
+import { useEffect, useRef, useState } from 'react';
 import { history } from 'umi';
 
 // 配置 moment 中文语言
@@ -16,6 +16,9 @@ moment.locale('zh-cn');
 export default function MomentManage() {
   const actionRef = useRef();
   const [defaultPageSize, setDefaultPageSize] = useState(20);
+  const [dateModalVisible, setDateModalVisible] = useState(false);
+  const [currentMoment, setCurrentMoment] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(null);
 
   // 获取站点配置中的默认分页大小
   useEffect(() => {
@@ -36,6 +39,28 @@ export default function MomentManage() {
       return moment(dateString).fromNow();
     } catch {
       return dateString;
+    }
+  };
+
+  const handleEditDate = (record) => {
+    setCurrentMoment(record);
+    setSelectedDate(moment(record.createdAt));
+    setDateModalVisible(true);
+  };
+
+  const handleUpdateDate = async () => {
+    if (!checkDemo()) return;
+
+    try {
+      await updateMoment(currentMoment.id, {
+        createdAt: selectedDate.toISOString(),
+      });
+      message.success('创建时间更新成功');
+      setDateModalVisible(false);
+      actionRef.current?.reload();
+    } catch (error) {
+      console.error('更新创建时间失败:', error);
+      message.error('更新创建时间失败');
     }
   };
 
@@ -74,11 +99,20 @@ export default function MomentManage() {
       dataIndex: 'createdAt',
       key: 'createdAt',
       width: 180,
-      render: (text) => (
+      render: (text, record) => (
         <div>
           <div>{new Date(text).toLocaleString('zh-CN')}</div>
-          <div style={{ fontSize: '12px', color: '#999' }}>
-            {formatTime(text)}
+          <div style={{ fontSize: '12px', color: '#999', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>{formatTime(text)}</span>
+            <Tooltip title="修改创建时间">
+              <Button 
+                type="link" 
+                size="small" 
+                icon={<CalendarOutlined />} 
+                onClick={() => handleEditDate(record)}
+                style={{ padding: 0, height: 'auto' }}
+              />
+            </Tooltip>
           </div>
         </div>
       ),
@@ -223,6 +257,25 @@ export default function MomentManage() {
           pageSizeOptions: ['10', '20', '50', '100', '200'],
         }}
       />
+
+      <Modal
+        title="修改动态创建时间"
+        open={dateModalVisible}
+        onCancel={() => setDateModalVisible(false)}
+        onOk={handleUpdateDate}
+        okText="确认"
+        cancelText="取消"
+      >
+        <div style={{ textAlign: 'center' }}>
+          <DatePicker
+            showTime
+            format="YYYY-MM-DD HH:mm:ss"
+            value={selectedDate}
+            onChange={setSelectedDate}
+            style={{ width: '100%' }}
+          />
+        </div>
+      </Modal>
     </PageContainer>
   );
 } 

@@ -7,6 +7,7 @@ export class CreateMomentDto {
 
 export class UpdateMomentDto {
   content?: string;
+  createdAt?: Date;
   deleted?: boolean;
   updatedAt?: Date;
 }

@@ -1,4 +1,4 @@
-import { createCategory, getAllCategories, getTags, updateArticle, updateDraft } from '@/services/van-blog/api';
+import { createCategory, getAllCategories, getTags, updateArticle, updateDraft, updateMoment } from '@/services/van-blog/api';
 import { ModalForm, ProFormDateTimePicker, ProFormItem, ProFormSelect, ProFormText } from '@ant-design/pro-form';
 import { AutoComplete, Form, message, Modal } from 'antd';
 import * as moment from 'moment';
@@ -9,7 +9,7 @@ export default function (props: {
   currObj: any;
   setLoading: any;
   onFinish: any;
-  type: 'article' | 'draft' | 'about';
+  type: 'article' | 'draft' | 'about' | 'moment';
 }) {
   const { currObj, setLoading, type, onFinish } = props;
   const [form] = Form.useForm();
@@ -29,8 +29,10 @@ export default function (props: {
         console.warn('获取分类列表失败:', error);
       }
     };
-    fetchCategories();
-  }, []);
+    if (type !== 'moment') {
+      fetchCategories();
+    }
+  }, [type]);
 
   return (
     <ModalForm
@@ -59,7 +61,7 @@ export default function (props: {
         setLoading(true);
         
         // 检查是否需要创建新分类
-        if (values.category) {
+        if (values.category && type !== 'moment') {
           try {
             const { data: categories } = await getAllCategories();
             if (!categories.includes(values.category)) {
@@ -88,6 +90,11 @@ export default function (props: {
           onFinish();
           message.success('修改草稿成功！');
           setLoading(false);
+        } else if (type == 'moment') {
+          await updateMoment(currObj?.id, values);
+          onFinish();
+          message.success('修改动态成功！');
+          setLoading(false);
         } else {
           return false;
         }
@@ -99,48 +106,52 @@ export default function (props: {
       key="editForm"
       // wrapperCol: { span: 14 },
     >
-      <ProFormText
-        width="md"
-        required
-        id="title"
-        name="title"
-        label="文章标题"
-        placeholder="请输入标题"
-        rules={[{ required: true, message: '这是必填项' }]}
-      />
-      <AuthorField />
-      <ProFormSelect
-        mode="tags"
-        width="md"
-        name="tags"
-        label="标签"
-        placeholder="请选择或输入标签"
-        fieldProps={{
-          tokenSeparators: [','],
-        }}
-        request={async () => {
-          const msg = await getTags();
-          return msg?.data?.map((item) => ({ label: item, value: item })) || [];
-        }}
-      />
-      <ProFormItem
-        width="md"
-        required
-        label="分类"
-        name="category"
-        tooltip="可以选择已有分类，也可以输入新分类名称"
-        rules={[{ required: true, message: '这是必填项' }]}
-      >
-        <AutoComplete
-          placeholder="请选择分类或输入新分类名称"
-          allowClear
-          filterOption={(inputValue, option) =>
-            option?.value?.toLowerCase().indexOf(inputValue.toLowerCase()) >= 0
-          }
-          options={categories.map(item => ({ value: item, label: item }))}
-          style={{ width: '100%' }}
-        />
-      </ProFormItem>
+      {type !== 'moment' && (
+        <>
+          <ProFormText
+            width="md"
+            required
+            id="title"
+            name="title"
+            label="文章标题"
+            placeholder="请输入标题"
+            rules={[{ required: true, message: '这是必填项' }]}
+          />
+          <AuthorField />
+          <ProFormSelect
+            mode="tags"
+            width="md"
+            name="tags"
+            label="标签"
+            placeholder="请选择或输入标签"
+            fieldProps={{
+              tokenSeparators: [','],
+            }}
+            request={async () => {
+              const msg = await getTags();
+              return msg?.data?.map((item) => ({ label: item, value: item })) || [];
+            }}
+          />
+          <ProFormItem
+            width="md"
+            required
+            label="分类"
+            name="category"
+            tooltip="可以选择已有分类，也可以输入新分类名称"
+            rules={[{ required: true, message: '这是必填项' }]}
+          >
+            <AutoComplete
+              placeholder="请选择分类或输入新分类名称"
+              allowClear
+              filterOption={(inputValue, option) =>
+                option?.value?.toLowerCase().indexOf(inputValue.toLowerCase()) >= 0
+              }
+              options={categories.map(item => ({ value: item, label: item }))}
+              style={{ width: '100%' }}
+            />
+          </ProFormItem>
+        </>
+      )}
       <ProFormDateTimePicker
         width="md"
         name="createdAt"
