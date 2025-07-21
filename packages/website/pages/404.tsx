@@ -2,7 +2,7 @@ import { GetStaticProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
-import { useContext, useEffect, useState } from "react";
+import { useContext } from "react";
 import { getPublicMeta } from "../api/getAllData";
 import { getArticlesByOption } from "../api/getArticles";
 import { getArticlePath } from "../utils/getArticlePath";
@@ -16,7 +16,6 @@ export default function Custom404(props: {
   authorLogoDark?: string;
   author?: string;
 }) {
-  const [articles, setArticles] = useState(props.recommendedArticles || []);
   const { theme } = useContext(ThemeContext);
   
   // 根据主题选择合适的logo
@@ -24,24 +23,8 @@ export default function Custom404(props: {
     ? props.authorLogoDark 
     : props.authorLogo || "/logo.svg";
   
-  // 如果没有SSG获取的文章，客户端尝试获取
-  useEffect(() => {
-    if (!articles || articles.length === 0) {
-      const fetchArticles = async () => {
-        try {
-          const { articles } = await getArticlesByOption({
-            page: 1,
-            pageSize: 3,
-            sortCreatedAt: "desc"
-          });
-          setArticles(articles || []);
-        } catch (error) {
-          console.error("获取推荐文章失败", error);
-        }
-      };
-      fetchArticles();
-    }
-  }, [articles]);
+  // 完全使用静态生成的文章数据
+  const articles = props.recommendedArticles || [];
   
   return (
     <>
@@ -103,10 +86,10 @@ export default function Custom404(props: {
 
 export const getStaticProps: GetStaticProps = async () => {
   try {
-    // 获取最新的3篇文章作为推荐
+    // 获取最新的5篇文章作为推荐
     const { articles } = await getArticlesByOption({
       page: 1,
-      pageSize: 3,
+      pageSize: 5,
       sortCreatedAt: "desc"
     });
     
@@ -121,8 +104,8 @@ export const getStaticProps: GetStaticProps = async () => {
         authorLogoDark: authorCardProps.logoDark || "",
         author: authorCardProps.author || ""
       },
-      // 一小时重新生成一次
-      revalidate: 3600
+      // 10分钟重新验证一次，确保数据更新及时
+      revalidate: 600
     };
   } catch (error) {
     console.error("获取数据失败", error);
@@ -133,7 +116,7 @@ export const getStaticProps: GetStaticProps = async () => {
         authorLogoDark: "",
         author: ""
       },
-      revalidate: 3600
+      revalidate: 600
     };
   }
 };
