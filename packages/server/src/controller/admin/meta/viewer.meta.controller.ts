@@ -87,19 +87,31 @@ export class ViewerMetaController {
       visited: updateDto.visited,
     });
     
-    // 同时更新Visit表中的浏览量（这是前端显示的数据源）
-    // 1. 始终更新基于ID的路径
+    // 更新基于ID的路径
     const idPathname = `/post/${updateDto.id}`;
     await this.visitProvider.rewriteToday(idPathname, updateDto.viewer, updateDto.visited);
     
-    // 2. 如果有自定义路径，也更新自定义路径的记录
+    // 如果有自定义路径，也更新
     if (article.pathname) {
       const customPathname = `/post/${article.pathname}`;
       await this.visitProvider.rewriteToday(customPathname, updateDto.viewer, updateDto.visited);
+      
+      // 使用新的同步方法确保两个路径的数据完全一致
+      await this.visitProvider.syncPathViewerData(updateDto.id, article.pathname);
     }
     
-    // 触发增量渲染更新
-    this.isrProvider.activeArticleById(updateDto.id, 'update', article);
+    // 强制触发ISR重新渲染文章页面和相关页面
+    try {
+      await this.isrProvider.activeArticleById(updateDto.id, 'update', article);
+      
+      // 额外确保自定义路径页面也得到更新
+      if (article.pathname) {
+        const customPath = `/post/${article.pathname}`;
+        await this.isrProvider.activeUrl(customPath, true);
+      }
+    } catch (error) {
+      console.error('触发增量渲染失败:', error);
+    }
     
     return {
       statusCode: 200,
@@ -122,6 +134,9 @@ export class ViewerMetaController {
       visited: updateDto.siteVisited,
     });
     
+    // 需要强制刷新的文章路径
+    const articlesToRefresh = [];
+    
     // 批量更新文章浏览量
     for (const articleUpdate of updateDto.articles) {
       // 获取文章信息，检查是否有自定义路径
@@ -136,20 +151,41 @@ export class ViewerMetaController {
         visited: articleUpdate.visited,
       });
       
-      // 同时更新Visit表中的浏览量（这是前端显示的数据源）
-      // 1. 始终更新基于ID的路径
+      // 更新基于ID的路径
       const idPathname = `/post/${articleUpdate.id}`;
       await this.visitProvider.rewriteToday(idPathname, articleUpdate.viewer, articleUpdate.visited);
       
-      // 2. 如果有自定义路径，也更新自定义路径的记录
+      // 添加到需要刷新的文章列表
+      articlesToRefresh.push({id: articleUpdate.id, article});
+      
+      // 如果有自定义路径，也更新
       if (article.pathname) {
         const customPathname = `/post/${article.pathname}`;
         await this.visitProvider.rewriteToday(customPathname, articleUpdate.viewer, articleUpdate.visited);
+        
+        // 使用新的同步方法确保两个路径的数据完全一致
+        await this.visitProvider.syncPathViewerData(articleUpdate.id, article.pathname);
       }
     }
     
-    // 触发增量渲染更新
-    this.isrProvider.activeAll('批量更新浏览量');
+    // 强制触发ISR重新渲染所有文章页面和相关页面
+    try {
+      // 首先触发全站刷新
+      await this.isrProvider.activeAll('批量更新浏览量');
+      
+      // 然后逐个触发文章页面，确保完全更新
+      for (const {id, article} of articlesToRefresh) {
+        await this.isrProvider.activeArticleById(id, 'update', article);
+        
+        // 额外确保自定义路径页面也得到更新
+        if (article.pathname) {
+          const customPath = `/post/${article.pathname}`;
+          await this.isrProvider.activeUrl(customPath, true);
+        }
+      }
+    } catch (error) {
+      console.error('触发增量渲染失败:', error);
+    }
     
     return {
       statusCode: 200,
@@ -180,6 +216,9 @@ export class ViewerMetaController {
     let totalViewerIncrease = 0;
     let totalVisitedIncrease = 0;
     
+    // 需要强制刷新的文章路径
+    const articlesToRefresh = [];
+    
     // 随机提升每篇文章的浏览量
     for (const article of validArticles) {
       const viewerIncrease = Math.floor(Math.random() * (maxIncrease - minIncrease + 1)) + minIncrease;
@@ -194,15 +233,20 @@ export class ViewerMetaController {
         visited: newVisited,
       });
       
-      // 同时更新Visit表中的浏览量（这是前端显示的数据源）
-      // 1. 始终更新基于ID的路径
+      // 更新基于ID的路径
       const idPathname = `/post/${article.id}`;
       await this.visitProvider.rewriteToday(idPathname, newViewer, newVisited);
       
-      // 2. 如果有自定义路径，也更新自定义路径的记录
+      // 添加到需要刷新的文章列表
+      articlesToRefresh.push({id: article.id, article});
+      
+      // 如果有自定义路径，也更新
       if (article.pathname) {
         const customPathname = `/post/${article.pathname}`;
         await this.visitProvider.rewriteToday(customPathname, newViewer, newVisited);
+        
+        // 使用新的同步方法确保两个路径的数据完全一致
+        await this.visitProvider.syncPathViewerData(article.id, article.pathname);
       }
       
       totalViewerIncrease += viewerIncrease;
@@ -221,8 +265,24 @@ export class ViewerMetaController {
       });
     }
     
-    // 触发增量渲染更新
-    this.isrProvider.activeAll('智能提升浏览量');
+    // 强制触发ISR重新渲染所有文章页面和相关页面
+    try {
+      // 首先触发全站刷新
+      await this.isrProvider.activeAll('智能提升浏览量');
+      
+      // 然后逐个触发文章页面，确保完全更新
+      for (const {id, article} of articlesToRefresh) {
+        await this.isrProvider.activeArticleById(id, 'update', article);
+        
+        // 额外确保自定义路径页面也得到更新
+        if (article.pathname) {
+          const customPath = `/post/${article.pathname}`;
+          await this.isrProvider.activeUrl(customPath, true);
+        }
+      }
+    } catch (error) {
+      console.error('触发增量渲染失败:', error);
+    }
     
     return {
       statusCode: 200,

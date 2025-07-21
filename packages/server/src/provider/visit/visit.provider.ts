@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import dayjs from 'dayjs';
 import { Model } from 'mongoose';
@@ -7,6 +7,7 @@ import { createVisitDto } from 'src/types/visit.dto';
 
 @Injectable()
 export class VisitProvider {
+  private logger = new Logger(VisitProvider.name);
   constructor(@InjectModel('Visit') private visitModel: Model<VisitDocument>) {}
 
   async add(createViewerDto: createVisitDto): Promise<any> {
@@ -52,7 +53,97 @@ export class VisitProvider {
         viewer,
         visited,
         pathname,
+        lastVisitedTime: new Date(),
       });
+    }
+  }
+
+  // 同步ID路径和自定义路径的数据
+  async syncPathViewerData(articleId: number, customPath: string) {
+    try {
+      const today = dayjs().format('YYYY-MM-DD');
+      const idPathname = `/post/${articleId}`;
+      const customPathname = `/post/${customPath}`;
+      
+      this.logger.log(`开始同步浏览量数据: ${idPathname} <-> ${customPathname}`);
+      
+      // 获取两个路径的最新数据
+      const idData = await this.findByDateAndPath(today, idPathname);
+      const customData = await this.findByDateAndPath(today, customPathname);
+      
+      // 如果两者都存在，使用最高的浏览量值
+      if (idData && customData) {
+        const maxViewer = Math.max(idData.viewer || 0, customData.viewer || 0);
+        const maxVisited = Math.max(idData.visited || 0, customData.visited || 0);
+        
+        await this.visitModel.updateOne({ _id: idData.id }, { viewer: maxViewer, visited: maxVisited });
+        await this.visitModel.updateOne({ _id: customData.id }, { viewer: maxViewer, visited: maxVisited });
+        
+        this.logger.log(`同步完成: ID路径=${maxViewer}/${maxVisited}, 自定义路径=${maxViewer}/${maxVisited}`);
+      }
+      // 如果只有一种路径有数据，则为另一种路径创建相同的数据
+      else if (idData && !customData) {
+        await this.visitModel.create({
+          date: today,
+          viewer: idData.viewer,
+          visited: idData.visited,
+          pathname: customPathname,
+          lastVisitedTime: new Date(),
+        });
+        this.logger.log(`从ID路径复制到自定义路径: ${idData.viewer}/${idData.visited}`);
+      }
+      else if (!idData && customData) {
+        await this.visitModel.create({
+          date: today,
+          viewer: customData.viewer,
+          visited: customData.visited,
+          pathname: idPathname,
+          lastVisitedTime: new Date(),
+        });
+        this.logger.log(`从自定义路径复制到ID路径: ${customData.viewer}/${customData.visited}`);
+      }
+      // 如果都没有数据，则创建初始记录
+      else {
+        this.logger.log(`两种路径都没有今日数据，尝试使用历史数据`);
+        
+        // 查找最近的数据
+        const lastIdData = await this.getLastData(idPathname);
+        const lastCustomData = await this.getLastData(customPathname);
+        
+        // 使用最高值
+        const viewer = Math.max(
+          lastIdData?.viewer || 0,
+          lastCustomData?.viewer || 0
+        );
+        const visited = Math.max(
+          lastIdData?.visited || 0,
+          lastCustomData?.visited || 0
+        );
+        
+        // 为两种路径都创建记录
+        await this.visitModel.create({
+          date: today,
+          viewer,
+          visited,
+          pathname: idPathname,
+          lastVisitedTime: new Date(),
+        });
+        
+        await this.visitModel.create({
+          date: today,
+          viewer,
+          visited,
+          pathname: customPathname,
+          lastVisitedTime: new Date(),
+        });
+        
+        this.logger.log(`创建了两条初始记录: ${viewer}/${visited}`);
+      }
+      
+      return true;
+    } catch (error) {
+      this.logger.error(`同步浏览量数据失败: ${error.message}`);
+      return false;
     }
   }
 

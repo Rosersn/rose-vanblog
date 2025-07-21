@@ -216,13 +216,34 @@ export class ISRProvider {
 
   async activeUrl(url: string, log: boolean) {
     try {
-      await axios.get(encodeURI(this.base + url));
-      if (log) {
-        this.logger.log(`触发增量渲染成功！ ${url}`);
+      // 尝试3次请求，以确保成功
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          await axios.get(encodeURI(this.base + url), { 
+            timeout: 10000, // 10秒超时
+            headers: { 'Cache-Control': 'no-cache' } // 避免缓存问题
+          });
+          
+          if (log) {
+            this.logger.log(`触发增量渲染成功！(${url}) 尝试次数: ${attempt}`);
+          }
+          
+          return; // 成功后直接返回
+        } catch (err) {
+          if (attempt === 3) {
+            throw err; // 最后一次尝试仍然失败，抛出异常
+          }
+          
+          // 等待短暂时间后重试
+          await sleep(1000);
+          
+          if (log) {
+            this.logger.warn(`重试触发增量渲染 (${url}) 第${attempt}次失败，将重试...`);
+          }
+        }
       }
     } catch (err) {
-      // console.log(err);
-      this.logger.error(`触发增量渲染失败！ ${url}`);
+      this.logger.error(`触发增量渲染失败！(${url}) - 错误: ${err.message || '未知错误'}`);
     }
   }
 

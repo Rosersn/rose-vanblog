@@ -190,11 +190,38 @@ export class PublicController {
 
   @Get('/article/viewer/:id')
   async getViewerByArticleIdOrPathname(@Param('id') id: number | string) {
-    const data = await this.visitProvider.getByArticleId(id);
-    return {
-      statusCode: 200,
-      data: data,
-    };
+    try {
+      // 先尝试直接获取
+      const data = await this.visitProvider.getByArticleId(id);
+      
+      // 如果找不到数据且是字符串ID(可能是自定义路径)，尝试查找对应的文章以获取ID
+      if (!data && typeof id === 'string' && isNaN(Number(id))) {
+        const article = await this.articleProvider.getByPathName(id, 'list');
+        if (article) {
+          const dataById = await this.visitProvider.getByArticleId(article.id);
+          if (dataById) {
+            // 找到了数据，顺便同步一下两个路径的数据，以便将来直接获取
+            await this.visitProvider.syncPathViewerData(article.id, id);
+            return {
+              statusCode: 200,
+              data: dataById,
+            };
+          }
+        }
+      }
+      
+      return {
+        statusCode: 200,
+        data: data,
+      };
+    } catch (error) {
+      console.error('获取文章浏览量失败:', error);
+      return {
+        statusCode: 500,
+        message: '获取文章浏览量失败',
+        data: null,
+      };
+    }
   }
 
   @Get('/tag-articles/:name')
