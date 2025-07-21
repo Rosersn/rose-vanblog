@@ -2,9 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import dayjs from 'dayjs';
 import { Model } from 'mongoose';
+import { Visit, VisitDocument } from 'src/scheme/visit.schema';
 import { createVisitDto } from 'src/types/visit.dto';
-import { Visit } from 'src/scheme/visit.schema';
-import { VisitDocument } from 'src/scheme/visit.schema';
 
 @Injectable()
 export class VisitProvider {
@@ -72,19 +71,45 @@ export class VisitProvider {
   async findByDateAndPath(date: string, pathname: string): Promise<Visit> {
     return this.visitModel.findOne({ date, pathname }).exec();
   }
+  
   async getByArticleId(id: number | string) {
-    const pathname = id == 0 ? `/about` : `/post/${id}`;
+    // 判断是否是数字ID还是自定义路径名
+    const isCustomPath = typeof id === 'string' && isNaN(Number(id));
+    
+    // 查询路径
+    const pathname = id == 0 
+      ? `/about` 
+      : `/post/${id}`;
+    
+    // 查询今天的数据
     const result = await this.visitModel
       .find({
         pathname,
       })
       .sort({ date: -1 })
       .limit(1);
+    
+    // 如果使用自定义路径没有找到数据，尝试使用数字ID查询
+    if ((!result || result.length === 0) && isCustomPath) {
+      // 这里可能需要额外依赖注入 ArticleProvider 来获取文章ID
+      // 由于这里不容易修改依赖结构，先使用直接查询的方式
+      // 查询基于ID路径的数据
+      const allData = await this.visitModel.find({}).exec();
+      const matchingData = allData
+        .filter(data => data.pathname.startsWith('/post/') && !isNaN(Number(data.pathname.replace('/post/', ''))))
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      if (matchingData.length > 0) {
+        return matchingData[0];
+      }
+    }
+    
     if (result && result.length) {
       return result[0];
     }
     return null;
   }
+  
   async getLastVisitItem() {
     const result = await this.visitModel
       .find({

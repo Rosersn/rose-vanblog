@@ -1,13 +1,13 @@
 import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { config } from 'src/config';
+import { ArticleProvider } from 'src/provider/article/article.provider';
 import { AdminGuard } from 'src/provider/auth/auth.guard';
 import { ISRProvider } from 'src/provider/isr/isr.provider';
 import { MetaProvider } from 'src/provider/meta/meta.provider';
-import { ArticleProvider } from 'src/provider/article/article.provider';
-import { VisitProvider } from 'src/provider/visit/visit.provider';
-import { config } from 'src/config';
-import { UpdateSiteViewerDto, BatchUpdateViewerDto } from 'src/types/viewer.dto';
 import { ApiToken } from 'src/provider/swagger/token';
+import { VisitProvider } from 'src/provider/visit/visit.provider';
+import { BatchUpdateViewerDto, UpdateSiteViewerDto } from 'src/types/viewer.dto';
 
 @ApiTags('viewer')
 @UseGuards(...AdminGuard)
@@ -72,6 +72,15 @@ export class ViewerMetaController {
       };
     }
     
+    // 获取文章信息，检查是否有自定义路径
+    const article = await this.articleProvider.getById(updateDto.id, 'admin');
+    if (!article) {
+      return {
+        statusCode: 404,
+        message: '文章不存在！',
+      };
+    }
+    
     // 更新Article表中的浏览量
     await this.articleProvider.updateById(updateDto.id, {
       viewer: updateDto.viewer,
@@ -79,8 +88,18 @@ export class ViewerMetaController {
     });
     
     // 同时更新Visit表中的浏览量（这是前端显示的数据源）
-    const pathname = `/post/${updateDto.id}`;
-    await this.visitProvider.rewriteToday(pathname, updateDto.viewer, updateDto.visited);
+    // 1. 始终更新基于ID的路径
+    const idPathname = `/post/${updateDto.id}`;
+    await this.visitProvider.rewriteToday(idPathname, updateDto.viewer, updateDto.visited);
+    
+    // 2. 如果有自定义路径，也更新自定义路径的记录
+    if (article.pathname) {
+      const customPathname = `/post/${article.pathname}`;
+      await this.visitProvider.rewriteToday(customPathname, updateDto.viewer, updateDto.visited);
+    }
+    
+    // 触发增量渲染更新
+    this.isrProvider.activeArticleById(updateDto.id, 'update', article);
     
     return {
       statusCode: 200,
@@ -104,17 +123,33 @@ export class ViewerMetaController {
     });
     
     // 批量更新文章浏览量
-    for (const article of updateDto.articles) {
+    for (const articleUpdate of updateDto.articles) {
+      // 获取文章信息，检查是否有自定义路径
+      const article = await this.articleProvider.getById(articleUpdate.id, 'admin');
+      if (!article) {
+        continue; // 跳过不存在的文章
+      }
+      
       // 更新Article表
-      await this.articleProvider.updateById(article.id, {
-        viewer: article.viewer,
-        visited: article.visited,
+      await this.articleProvider.updateById(articleUpdate.id, {
+        viewer: articleUpdate.viewer,
+        visited: articleUpdate.visited,
       });
       
       // 同时更新Visit表中的浏览量（这是前端显示的数据源）
-      const pathname = `/post/${article.id}`;
-      await this.visitProvider.rewriteToday(pathname, article.viewer, article.visited);
+      // 1. 始终更新基于ID的路径
+      const idPathname = `/post/${articleUpdate.id}`;
+      await this.visitProvider.rewriteToday(idPathname, articleUpdate.viewer, articleUpdate.visited);
+      
+      // 2. 如果有自定义路径，也更新自定义路径的记录
+      if (article.pathname) {
+        const customPathname = `/post/${article.pathname}`;
+        await this.visitProvider.rewriteToday(customPathname, articleUpdate.viewer, articleUpdate.visited);
+      }
     }
+    
+    // 触发增量渲染更新
+    this.isrProvider.activeAll('批量更新浏览量');
     
     return {
       statusCode: 200,
@@ -160,8 +195,15 @@ export class ViewerMetaController {
       });
       
       // 同时更新Visit表中的浏览量（这是前端显示的数据源）
-      const pathname = `/post/${article.id}`;
-      await this.visitProvider.rewriteToday(pathname, newViewer, newVisited);
+      // 1. 始终更新基于ID的路径
+      const idPathname = `/post/${article.id}`;
+      await this.visitProvider.rewriteToday(idPathname, newViewer, newVisited);
+      
+      // 2. 如果有自定义路径，也更新自定义路径的记录
+      if (article.pathname) {
+        const customPathname = `/post/${article.pathname}`;
+        await this.visitProvider.rewriteToday(customPathname, newViewer, newVisited);
+      }
       
       totalViewerIncrease += viewerIncrease;
       totalVisitedIncrease += visitedIncrease;
@@ -178,6 +220,9 @@ export class ViewerMetaController {
         visited: currentSite.visited + siteVisitedIncrease,
       });
     }
+    
+    // 触发增量渲染更新
+    this.isrProvider.activeAll('智能提升浏览量');
     
     return {
       statusCode: 200,
